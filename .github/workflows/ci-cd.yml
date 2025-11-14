@@ -1,0 +1,78 @@
+name: CI / CD – TurboVets App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    name: Build Docker image, push to ECR, deploy with CDKTF
+    runs-on: ubuntu-latest
+
+    env:
+      # All of these must be configured as GitHub Repository Variables (Settings → Variables → Actions)
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      ECR_REPOSITORY_NAME: ${{ vars.ECR_REPOSITORY_NAME }}
+      CONTAINER_PORT: "3000"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required variables
+        run: |
+          : "${AWS_REGION:?AWS_REGION repo variable not set}"
+          : "${ENVIRONMENT:?ENVIRONMENT repo variable not set}"
+          : "${SERVICE_NAME:?SERVICE_NAME repo variable not set}"
+          : "${ECR_REPOSITORY_NAME:?ECR_REPOSITORY_NAME repo variable not set}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Compute image metadata
+        id: image-meta
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY_NAME}" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f app/Dockerfile \
+            -t "${ECR_REPOSITORY}:${IMAGE_TAG}" \
+            .
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push "${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+      - name: Set up Node.js for CDKTF
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install IaC dependencies
+        working-directory: iac
+        run: npm ci
+
+      - name: Deploy with CDK for Terraform
+        working-directory: iac
+        env:
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          CONTAINER_PORT: ${{ env.CONTAINER_PORT }}
+          CONTAINER_IMAGE: "${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+        run: |
+          npx cdktf deploy --auto-approve
