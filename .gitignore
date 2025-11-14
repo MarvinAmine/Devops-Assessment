@@ -5,3 +5,7 @@ dist/
 iac/notes.txt
 iac/.gen
 iac/cdktf.out/stacks/
+*.tfstate
+*.tfstate.backup
+terraform.tfstate
+terraform.tfstate.*

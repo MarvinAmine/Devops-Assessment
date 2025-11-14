@@ -1,0 +1,16 @@
+{
+  "stacks": {
+    "turbovets-devops": {
+      "annotations": [
+      ],
+      "constructPath": "turbovets-devops",
+      "dependencies": [
+      ],
+      "name": "turbovets-devops",
+      "stackMetadataPath": "stacks/turbovets-devops/metadata.json",
+      "synthesizedStackPath": "stacks/turbovets-devops/cdk.tf.json",
+      "workingDirectory": "stacks/turbovets-devops"
+    }
+  },
+  "version": "0.20.12"
+}
