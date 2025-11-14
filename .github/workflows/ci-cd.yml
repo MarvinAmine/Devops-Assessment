@@ -66,6 +66,10 @@ jobs:
         working-directory: iac
         run: npm ci
 
+      - name: Build CDKTF app
+        working-directory: iac
+        run: npm run build
+
       - name: Deploy with CDK for Terraform
         working-directory: iac
         env:
