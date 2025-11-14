@@ -1,4 +1,4 @@
-[![CI / CD – TurboVets App](https://github.com/MarvinAmine/Devops-Assessment/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/<your-github-username>/<your-repo-name>/actions/workflows/ci-cd.yml)
+[![CI / CD – TurboVets App](https://github.com/MarvinAmine/Devops-Assessment/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/MarvinAmine/Devops-Assessment/actions/workflows/ci-cd.yml)
 
 # 🚀 DevOps Assessment – Full Lifecycle Challenge
 
