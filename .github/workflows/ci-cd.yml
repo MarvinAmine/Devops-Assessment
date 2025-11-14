@@ -62,6 +62,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Set up Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.5"
+
       - name: Install IaC dependencies
         working-directory: iac
         run: npm ci
