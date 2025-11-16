@@ -3,8 +3,8 @@ version: "3.9"
 services:
   app:
     build:
-      context: ..
-      dockerfile: ./app/Dockerfile
+      context: .
+      dockerfile: ./Dockerfile
     image: tv-devops-app:local
     container_name: tv-devops-app
     environment:
