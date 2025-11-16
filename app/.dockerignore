@@ -4,4 +4,3 @@ dist
 .gitignore
 npm-debug.log
 .env
-iac/
