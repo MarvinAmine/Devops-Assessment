@@ -10,11 +10,11 @@
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*.ts",
-    ".gen/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    ".gen"
   ]
 }
