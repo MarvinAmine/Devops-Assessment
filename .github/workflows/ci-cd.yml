@@ -92,6 +92,157 @@ jobs:
         working-directory: iac
         run: npm run build
 
+      - name: Auto-Reconcile AWS Resources Into Terraform State
+        if: env.ENVIRONMENT == 'dev'
+        working-directory: iac
+        run: |
+          set -euo pipefail
+
+          echo "=== Synthesizing Terraform (CDKTF) ==="
+          npx cdktf synth
+
+          TF_DIR="cdktf.out/stacks/turbovets-devops"
+          cd "$TF_DIR"
+
+          echo "=== Terraform init ==="
+          terraform init -input=false
+
+          FULL="${SERVICE_NAME}-${ENVIRONMENT}"
+
+          echo "=== Detecting existing AWS infrastructure for $FULL ==="
+
+          # ------------------------------------------------------------------------------
+          # 1) VPC autodetect (the ALB always knows which VPC it's in)
+          # ------------------------------------------------------------------------------
+          VPC_ID=$(aws elbv2 describe-load-balancers \
+            --names "${FULL}-alb" \
+            --query "LoadBalancers[0].VpcId" \
+            --output text 2>/dev/null || true)
+
+          if [ "$VPC_ID" = "None" ] || [ -z "$VPC_ID" ]; then
+            echo "ERROR: No ALB found. Cannot determine VPC automatically."
+            exit 1
+          fi
+
+          echo "Detected VPC: $VPC_ID"
+
+          # ------------------------------------------------------------------------------
+          # 2) Subnets autodetect
+          # ------------------------------------------------------------------------------
+          SUBNET_IDS=$(aws elbv2 describe-load-balancers \
+            --names "${FULL}-alb" \
+            --query "LoadBalancers[0].AvailabilityZones[*].SubnetId" \
+            --output text)
+
+          echo "Detected Subnets: $SUBNET_IDS"
+
+          # ------------------------------------------------------------------------------
+          # 3) IGW autodetect
+          # ------------------------------------------------------------------------------
+          IGW_ID=$(aws ec2 describe-internet-gateways \
+            --filters "Name=attachment.vpc-id,Values=$VPC_ID" \
+            --query "InternetGateways[0].InternetGatewayId" \
+            --output text)
+
+          echo "Detected IGW: $IGW_ID"
+
+          # ------------------------------------------------------------------------------
+          # 4) Route table autodetect
+          # ------------------------------------------------------------------------------
+          RT_ID=$(aws ec2 describe-route-tables \
+            --filters "Name=vpc-id,Values=$VPC_ID" \
+            --query "RouteTables[0].RouteTableId" \
+            --output text)
+
+          echo "Detected Route Table: $RT_ID"
+
+          # ------------------------------------------------------------------------------
+          # 5) LB / TG / Listener autodetect
+          # ------------------------------------------------------------------------------
+          LB_ARN=$(aws elbv2 describe-load-balancers \
+            --names "${FULL}-alb" \
+            --query "LoadBalancers[0].LoadBalancerArn" \
+            --output text)
+
+          TG_ARN=$(aws elbv2 describe-target-groups \
+            --names "${FULL}-tg" \
+            --query "TargetGroups[0].TargetGroupArn" \
+            --output text)
+
+          LISTENER_ARN=$(aws elbv2 describe-listeners \
+            --load-balancer-arn "$LB_ARN" \
+            --query "Listeners[0].ListenerArn" \
+            --output text)
+
+          echo "LB ARN: $LB_ARN"
+          echo "TG ARN: $TG_ARN"
+          echo "Listener ARN: $LISTENER_ARN"
+
+          # ------------------------------------------------------------------------------
+          # Helper to detect Terraform resource logical names
+          # ------------------------------------------------------------------------------
+          detect() {
+            jq -r ".resource[\"$1\"] | keys[0] // empty" cdk.tf.json
+          }
+
+          TF_VPC=$(detect "aws_vpc")
+          TF_PUB1=$(detect "aws_subnet")
+          TF_PUB2=$(jq -r '."resource"["aws_subnet"] | keys[1]' cdk.tf.json)
+          TF_IGW=$(detect "aws_internet_gateway")
+          TF_RT=$(detect "aws_route_table")
+          TF_ALB=$(detect "aws_lb")
+          TF_TG=$(detect "aws_lb_target_group")
+          TF_LIS=$(detect "aws_lb_listener")
+
+          echo "TF VPC key: $TF_VPC"
+          echo "TF Subnet keys: $TF_PUB1, $TF_PUB2"
+          echo "TF IGW key: $TF_IGW"
+          echo "TF RouteTable key: $TF_RT"
+          echo "TF ALB key: $TF_ALB"
+          echo "TF TargetGroup key: $TF_TG"
+          echo "TF Listener key: $TF_LIS"
+
+          # ------------------------------------------------------------------------------
+          # Import everything found — skip if already in state
+          # ------------------------------------------------------------------------------
+
+          import_if_missing() {
+            local tfkey="$1"
+            local addr="$2"
+
+            if [ -z "$tfkey" ] || [ "$tfkey" = "null" ]; then
+              echo "Skipping empty key ($tfkey)"
+              return
+            fi
+
+            if terraform state list | grep -q "$tfkey"; then
+              echo "Already in state: $tfkey"
+            else
+              echo "Importing $tfkey → $addr"
+              terraform import "$tfkey" "$addr" || true
+            fi
+          }
+
+          import_if_missing "aws_vpc.$TF_VPC" "$VPC_ID"
+
+          # Import subnets (split on space)
+          IDX=0
+          for S in $SUBNET_IDS; do
+            KEY=$(jq -r ".resource[\"aws_subnet\"] | keys[$IDX] // empty" cdk.tf.json)
+            import_if_missing "aws_subnet.$KEY" "$S"
+            IDX=$((IDX+1))
+          done
+
+          import_if_missing "aws_internet_gateway.$TF_IGW" "$IGW_ID"
+          import_if_missing "aws_route_table.$TF_RT" "$RT_ID"
+
+          import_if_missing "aws_lb.$TF_ALB" "$LB_ARN"
+          import_if_missing "aws_lb_target_group.$TF_TG" "$TG_ARN"
+          import_if_missing "aws_lb_listener.$TF_LIS" "$LISTENER_ARN"
+
+          echo "=== Reconciliation complete ==="
+
+     
       - name: Deploy with CDK for Terraform
         working-directory: iac
         env:

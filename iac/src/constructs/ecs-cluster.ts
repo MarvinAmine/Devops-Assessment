@@ -46,6 +46,7 @@ export class EcsClusterConstruct extends Construct {
     const logGroup = new CloudwatchLogGroup(this, 'LogGroup', {
       name: `/ecs/${config.serviceName}-${config.environment}`,
       retentionInDays: 7,
+      skipDestroy: true,
     });
 
     const cluster = new EcsCluster(this, 'EcsCluster', {
