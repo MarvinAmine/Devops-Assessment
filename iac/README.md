@@ -111,7 +111,7 @@ Edit `.env` to override defaults, and source your variables in the command line.
 set -a              # export all variables defined from now on
 source .env         # load variables from .env
 set +a              # stop auto-exporting
-printenv | grep -E '^(ENVIRONMENT|AWS_REGION|SERVICE_NAME|AWS_PROFILE|VPC_CIDR|ALB_ALLOWED_CIDR|DESIRED_COUNT|FARGATE_CPU|FARGATE_MEMORY|AWS_ACCOUNT_ID|ECR_REPOSITORY|ECR_URI|CONTAINER_PORT)='
+printenv | grep -E '^(ENVIRONMENT|AWS_REGION|SERVICE_NAME|AWS_PROFILE|VPC_CIDR|ALB_ALLOWED_CIDR|DESIRED_COUNT|FARGATE_CPU|FARGATE_MEMORY|AWS_ACCOUNT_ID|ECR_REPOSITORY|ECR_URI|CONTAINER_PORT|TF_STATE_BUCKET|TF_LOCK_TABLE)='
 ```bash
 
 ---
@@ -119,6 +119,52 @@ printenv | grep -E '^(ENVIRONMENT|AWS_REGION|SERVICE_NAME|AWS_PROFILE|VPC_CIDR|A
 # 3. Building & Pushing the Docker Image (Local or CI)
 
 From the **project root**:
+
+### 3.0 Create the Remote Terraform backend (S3 + DynamoDB)
+
+```bash
+# 1. Create S3 bucket (us-east-1 special rule: NO config block)
+aws s3api create-bucket \
+  --bucket "$TF_STATE_BUCKET" \
+  --region "$AWS_REGION"
+
+# 2. Enable versioning
+aws s3api put-bucket-versioning \
+  --bucket "$TF_STATE_BUCKET" \
+  --versioning-configuration Status=Enabled
+
+# 3. Block all public access (correct JSON syntax)
+aws s3api put-public-access-block \
+  --bucket "$TF_STATE_BUCKET" \
+  --public-access-block-configuration '{
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true,
+      "BlockPublicPolicy": true,
+      "RestrictPublicBuckets": true
+  }'
+
+# 4. Enable server-side encryption
+aws s3api put-bucket-encryption \
+  --bucket "$TF_STATE_BUCKET" \
+  --server-side-encryption-configuration '{
+    "Rules": [
+      {
+        "ApplyServerSideEncryptionByDefault": {
+          "SSEAlgorithm": "AES256"
+        }
+      }
+    ]
+  }'
+
+aws dynamodb create-table \
+  --table-name "$TF_LOCK_TABLE" \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST
+
+aws dynamodb describe-table --table-name "$TF_LOCK_TABLE"
+
+```
 
 ### 3.1 Build your app image
 

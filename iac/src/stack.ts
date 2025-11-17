@@ -2,6 +2,7 @@ import { TerraformStack, TerraformOutput } from 'cdktf';
 import { Construct } from 'constructs';
 import { AwsProvider } from '../.gen/providers/aws/provider';
 import { loadConfig } from './config';
+import { configureBackend } from "./backend";
 import { Networking } from './constructs/networking';
 import { SecurityGroups } from './constructs/security-groups';
 import { IamRoles } from './constructs/iam-roles';
@@ -18,6 +19,9 @@ export class TurboVetsStack extends TerraformStack {
     new AwsProvider(this, 'Aws', {
       region: config.region,
     });
+
+    // Attach dynamic S3 backend
+    configureBackend(this);
 
     // Networking
     const networking = new Networking(this, 'Networking', config);
