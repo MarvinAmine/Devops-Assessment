@@ -17,6 +17,9 @@ jobs:
       TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       CONTAINER_PORT: "3000"
+      ENABLE_HTTPS: ${{ vars.ENABLE_HTTPS }}
+      DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+      HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
 
     steps:
       - name: Checkout repository
@@ -100,5 +103,10 @@ jobs:
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           CONTAINER_PORT: ${{ env.CONTAINER_PORT }}
           CONTAINER_IMAGE: "${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          TF_LOCK_TABLE: ${{ env.TF_LOCK_TABLE }}
+          TF_STATE_BUCKET: ${{ env.TF_STATE_BUCKET }}
+          ENABLE_HTTPS: ${{ env.ENABLE_HTTPS }}
+          DOMAIN_NAME: ${{ env.DOMAIN_NAME }}
+          HOSTED_ZONE_ID: ${{ env.HOSTED_ZONE_ID }}
         run: |
           npx cdktf deploy --auto-approve

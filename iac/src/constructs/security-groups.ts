@@ -25,6 +25,12 @@ export class SecurityGroups extends Construct {
           protocol: 'tcp',
           cidrBlocks: ['0.0.0.0/0'],
         },
+        {
+          fromPort: 443,
+          toPort: 443,
+          protocol: 'tcp',
+          cidrBlocks: ['0.0.0.0/0'],
+        },
       ],
       egress: [
         {

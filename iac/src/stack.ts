@@ -78,6 +78,16 @@ export class TurboVetsStack extends TerraformStack {
       value: config.environment,
     });
 
+    new TerraformOutput(this, 'config_domain_name', {
+      value: config.domainName ?? '',
+    });
+
+    new TerraformOutput(this, 'app_base_url', {
+      value: config.domainName
+        ? `https://${config.domainName}`
+        : `http://${alb.dnsName}`,
+    });
+
     new TerraformOutput(this, 'config_region', {
       value: config.region,
     });
