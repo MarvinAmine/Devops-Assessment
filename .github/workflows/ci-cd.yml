@@ -4,22 +4,31 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy (dev / staging / prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
 
 jobs:
-  build-and-deploy:
-    name: Build Docker image, push to ECR, deploy with CDKTF
+
+  ###########################################################################
+  # 1. BUILD -> Build Docker image and push to ECR
+  ###########################################################################
+  build-image:
+    if: github.event_name == 'push'
+    name: Build Docker image and push to ECR
     runs-on: ubuntu-latest
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      ENVIRONMENT: ${{ vars.ENVIRONMENT }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
-      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
-      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-      CONTAINER_PORT: "3000"
-      ENABLE_HTTPS: ${{ vars.ENABLE_HTTPS }}
-      DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
-      HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
 
     steps:
       - name: Checkout repository
@@ -28,7 +37,6 @@ jobs:
       - name: Validate required variables
         run: |
           : "${AWS_REGION:?AWS_REGION repo variable not set}"
-          : "${ENVIRONMENT:?ENVIRONMENT repo variable not set}"
           : "${SERVICE_NAME:?SERVICE_NAME repo variable not set}"
 
       - name: Configure AWS credentials
@@ -43,14 +51,18 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Compute image metadata
-        id: image-meta
         run: |
-          echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
-          echo "ECR_REPOSITORY=${{ steps.login-ecr.outputs.registry }}/${SERVICE_NAME}-${ENVIRONMENT}" >> $GITHUB_ENV
+          IMAGE_TAG="${GITHUB_SHA}"
+          ECR_REPOSITORY="${{ steps.login-ecr.outputs.registry }}/${SERVICE_NAME}"
+
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> "$GITHUB_ENV"
+
+          echo "Building image: ${ECR_REPOSITORY}:${IMAGE_TAG}"
 
       - name: Ensure ECR repository exists
         run: |
-          REPO="${SERVICE_NAME}-${ENVIRONMENT}"
+          REPO="${SERVICE_NAME}"
 
           if ! aws ecr describe-repositories --repository-names "$REPO" >/dev/null 2>&1; then
             echo "Creating ECR repository: $REPO"
@@ -73,7 +85,62 @@ jobs:
       - name: Push Docker image to ECR
         run: docker push "${ECR_REPOSITORY}:${IMAGE_TAG}"
 
-      - name: Set up Node.js for CDKTF
+
+  ###########################################################################
+  # 2. DEV DEPLOYMENT -> Auto deploy on every push to main
+  ###########################################################################
+  deploy-dev:
+    needs: build-image
+    if: github.event_name == 'push'
+    name: Auto-deploy to DEV
+    runs-on: ubuntu-latest
+    environment: dev
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+
+      VPC_CIDR: ${{ vars.VPC_CIDR }}
+      ALB_ALLOWED_CIDR: ${{ vars.ALB_ALLOWED_CIDR }}
+      DESIRED_COUNT: ${{ vars.DESIRED_COUNT }}
+      FARGATE_CPU: ${{ vars.FARGATE_CPU }}
+      FARGATE_MEMORY: ${{ vars.FARGATE_MEMORY }}
+
+      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+
+      ENABLE_HTTPS: ${{ vars.ENABLE_HTTPS }}
+      DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+      HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+      CONTAINER_PORT: "3000"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (DEV)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Compute DEV metadata
+        run: |
+          IMAGE_TAG="${GITHUB_SHA}"
+          ECR_REPOSITORY="${{ steps.login-ecr.outputs.registry }}/${SERVICE_NAME}"
+          CONTAINER_IMAGE="${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          echo "ENVIRONMENT=dev" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> "$GITHUB_ENV"
+          echo "CONTAINER_IMAGE=$CONTAINER_IMAGE" >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -91,20 +158,129 @@ jobs:
         working-directory: iac
         run: npx cdktf get
 
-      - name: Build CDKTF app
+      - name: Build IaC
         working-directory: iac
         run: npm run build
 
-      - name: Deploy with CDK for Terraform
+      - name: Deploy to DEV with CDKTF
+        working-directory: iac
+        env:
+          ENVIRONMENT: "dev"
+          AWS_REGION: ${{ env.AWS_REGION }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          CONTAINER_PORT: ${{ env.CONTAINER_PORT }}
+          CONTAINER_IMAGE: ${{ env.CONTAINER_IMAGE }}
+
+          VPC_CIDR: ${{ env.VPC_CIDR }}
+          ALB_ALLOWED_CIDR: ${{ env.ALB_ALLOWED_CIDR }}
+          DESIRED_COUNT: ${{ env.DESIRED_COUNT }}
+          FARGATE_CPU: ${{ env.FARGATE_CPU }}
+          FARGATE_MEMORY: ${{ env.FARGATE_MEMORY }}
+
+          TF_LOCK_TABLE: ${{ env.TF_LOCK_TABLE }}
+          TF_STATE_BUCKET: ${{ env.TF_STATE_BUCKET }}
+
+          ENABLE_HTTPS: ${{ env.ENABLE_HTTPS }}
+          DOMAIN_NAME: ${{ env.DOMAIN_NAME }}
+          HOSTED_ZONE_ID: ${{ env.HOSTED_ZONE_ID }}
+        run: |
+          npx cdktf deploy --auto-approve
+
+
+  ###########################################################################
+  # 3. STAGING / PROD DEPLOYMENT -> Manual only (workflow_dispatch)
+  ###########################################################################
+  deploy-staging-prod:
+    if: github.event_name == 'workflow_dispatch'
+    name: Manual deploy (staging/prod)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      CONTAINER_PORT: "3000"
+
+      VPC_CIDR: ${{ vars.VPC_CIDR }}
+      ALB_ALLOWED_CIDR: ${{ vars.ALB_ALLOWED_CIDR }}
+      DESIRED_COUNT: ${{ vars.DESIRED_COUNT }}
+      FARGATE_CPU: ${{ vars.FARGATE_CPU }}
+      FARGATE_MEMORY: ${{ vars.FARGATE_MEMORY }}
+
+      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+
+      ENABLE_HTTPS: ${{ vars.ENABLE_HTTPS }}
+      DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+      HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (STAGING/PROD)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Compute deployment metadata
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          IMAGE_TAG="${GITHUB_SHA}"
+          ECR_REPOSITORY="${{ steps.login-ecr.outputs.registry }}/${SERVICE_NAME}"
+          CONTAINER_IMAGE="${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          echo "ENVIRONMENT=$ENVIRONMENT" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> "$GITHUB_ENV"
+          echo "CONTAINER_IMAGE=$CONTAINER_IMAGE" >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.5"
+
+      - name: Install IaC dependencies
+        working-directory: iac
+        run: npm ci
+
+      - name: Generate CDKTF provider bindings
+        working-directory: iac
+        run: npx cdktf get
+
+      - name: Build IaC
+        working-directory: iac
+        run: npm run build
+
+      - name: Deploy with CDKTF
         working-directory: iac
         env:
           ENVIRONMENT: ${{ env.ENVIRONMENT }}
           AWS_REGION: ${{ env.AWS_REGION }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           CONTAINER_PORT: ${{ env.CONTAINER_PORT }}
-          CONTAINER_IMAGE: "${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          CONTAINER_IMAGE: ${{ env.CONTAINER_IMAGE }}
+
+          VPC_CIDR: ${{ env.VPC_CIDR }}
+          ALB_ALLOWED_CIDR: ${{ env.ALB_ALLOWED_CIDR }}
+          DESIRED_COUNT: ${{ env.DESIRED_COUNT }}
+          FARGATE_CPU: ${{ env.FARGATE_CPU }}
+          FARGATE_MEMORY: ${{ env.FARGATE_MEMORY }}
+
           TF_LOCK_TABLE: ${{ env.TF_LOCK_TABLE }}
           TF_STATE_BUCKET: ${{ env.TF_STATE_BUCKET }}
+
           ENABLE_HTTPS: ${{ env.ENABLE_HTTPS }}
           DOMAIN_NAME: ${{ env.DOMAIN_NAME }}
           HOSTED_ZONE_ID: ${{ env.HOSTED_ZONE_ID }}

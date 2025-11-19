@@ -57,17 +57,12 @@ export class TurboVetsStack extends TerraformStack {
       taskRole,
       config
     );
-    const { service, ecrRepo } = ecsCluster.outputs;
+    const { service } = ecsCluster.outputs;
 
     // Outputs
     new TerraformOutput(this, 'alb_dns_name', {
       value: alb.dnsName,
       description: 'Public DNS name of the Application Load Balancer exposing /health',
-    });
-
-    new TerraformOutput(this, 'ecr_repository_url', {
-      value: ecrRepo.repositoryUrl,
-      description: 'ECR repository URI for CI/CD image pushes',
     });
 
     new TerraformOutput(this, 'ecs_service_name', {

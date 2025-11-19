@@ -1,6 +1,5 @@
 import { S3Backend } from "cdktf";
 import { TerraformStack } from "cdktf";
-import * as path from "path";
 
 export function configureBackend(stack: TerraformStack) {
   const env = process.env.ENVIRONMENT ?? "dev";

@@ -3,7 +3,6 @@ import { EcsCluster } from '../../.gen/providers/aws/ecs-cluster';
 import { EcsTaskDefinition } from '../../.gen/providers/aws/ecs-task-definition';
 import { EcsService } from '../../.gen/providers/aws/ecs-service';
 import { CloudwatchLogGroup } from '../../.gen/providers/aws/cloudwatch-log-group';
-import { EcrRepository } from '../../.gen/providers/aws/ecr-repository';
 import { IamRole } from '../../.gen/providers/aws/iam-role';
 import { LbTargetGroup } from '../../.gen/providers/aws/lb-target-group';
 import { SecurityGroup } from '../../.gen/providers/aws/security-group';
@@ -13,7 +12,6 @@ import { Config } from '../config';
 export interface EcsClusterOutputs {
   cluster: EcsCluster;
   service: EcsService;
-  ecrRepo: EcrRepository;
 }
 
 export class EcsClusterConstruct extends Construct {
@@ -31,18 +29,6 @@ export class EcsClusterConstruct extends Construct {
   ) {
     super(scope, id);
 
-    const ecrRepo = new EcrRepository(this, 'EcrRepository', {
-      name: config.ecrRepoName,
-      imageScanningConfiguration: {
-        scanOnPush: true,
-      },
-      imageTagMutability: 'MUTABLE',
-      tags: {
-        Environment: config.environment,
-        Service: config.serviceName,
-      },
-    });
-
     const logGroup = new CloudwatchLogGroup(this, 'LogGroup', {
       name: `/ecs/${config.serviceName}-${config.environment}`,
       retentionInDays: 7,
@@ -59,8 +45,8 @@ export class EcsClusterConstruct extends Construct {
 
     const taskDefinition = new EcsTaskDefinition(this, 'TaskDefinition', {
       family: `${config.serviceName}-${config.environment}`,
-      cpu: '256',
-      memory: '512',
+      cpu: config.fargateCpu,
+      memory: config.fargateMemory,
       networkMode: 'awsvpc',
       requiresCompatibilities: ['FARGATE'],
       executionRoleArn: taskExecutionRole.arn,
@@ -103,7 +89,7 @@ export class EcsClusterConstruct extends Construct {
       name: `${config.serviceName}-${config.environment}-service`,
       cluster: cluster.id,
       taskDefinition: taskDefinition.arn,
-      desiredCount: 1,
+      desiredCount: config.desiredCount,
       launchType: 'FARGATE',
       networkConfiguration: {
         subnets: subnets.map(s => s.id),
@@ -123,6 +109,6 @@ export class EcsClusterConstruct extends Construct {
       },
     });
 
-    this.outputs = { cluster, service, ecrRepo };
+    this.outputs = { cluster, service };
   }
 }
