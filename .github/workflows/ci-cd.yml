@@ -25,6 +25,7 @@ jobs:
     if: github.event_name == 'push'
     name: Build Docker image and push to ECR
     runs-on: ubuntu-latest
+    environment: dev
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
