@@ -23,13 +23,13 @@ export class SecurityGroups extends Construct {
           fromPort: 80,
           toPort: 80,
           protocol: 'tcp',
-          cidrBlocks: ['0.0.0.0/0'],
+          cidrBlocks: [config.albAllowedCidr],
         },
         {
           fromPort: 443,
           toPort: 443,
           protocol: 'tcp',
-          cidrBlocks: ['0.0.0.0/0'],
+          cidrBlocks: [config.albAllowedCidr],
         },
       ],
       egress: [

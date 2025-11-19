@@ -83,19 +83,32 @@ No AWS account, region, or sensitive values are hardcoded.
 
 ### Main Variables
 
-| Variable          | Description                                 |
-| ----------------- | ------------------------------------------- |
-| `ENVIRONMENT`     | Environment name (`dev`, `staging`, `prod`) |
-| `AWS_REGION`      | AWS region                                  |
-| `SERVICE_NAME`    | Base service name                           |
-| `CONTAINER_IMAGE` | Full ECR image URI + tag                    |
-| `CONTAINER_PORT`  | Container port exposed by the app           |
-| `FARGATE_CPU`     | CPU units (default 256)                     |
-| `FARGATE_MEMORY`  | Memory (default 512)                        |
-| `DESIRED_COUNT`   | Number of tasks (default 1)                 |
+| Variable           | Description                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `ENVIRONMENT`      | Logical environment name (`dev`, `staging`, `prod`). Used for naming and isolation. |
+| `AWS_REGION`       | AWS region where all resources are deployed.                                        |
+| `SERVICE_NAME`     | Base name used across ECS Service, ECS Cluster, ECR repo, ALB, etc.                 |
+| `AWS_PROFILE`      | Name of the local AWS CLI profile used for manual `cdktf deploy`.                   |
+| `VPC_CIDR`         | VPC CIDR block for the environment (ex: `10.0.0.0/16`).                             |
+| `ALB_ALLOWED_CIDR` | CIDR block allowed to access the ALB (`0.0.0.0/0` = public internet).               |
+| `DESIRED_COUNT`    | Number of ECS tasks to run (default: 1).                                            |
+| `FARGATE_CPU`      | CPU units for each ECS task (e.g., `256` = 0.25 vCPU).                              |
+| `FARGATE_MEMORY`   | Memory allocated to each ECS task in MiB (default: 512).                            |
+| `AWS_ACCOUNT_ID`   | AWS Account ID where the stack is deployed.                                         |
+| `ECR_REPOSITORY`   | ECR repository name (ex: `turbovets-app`). Must match Terraform ECR configuration.  |
+| `CONTAINER_PORT`   | Port exposed by the application inside the container (ex: `3000`).                  |
+| `ECR_URI`          | Computed URI for your ECR repo (`<account>.dkr.ecr.<region>.amazonaws.com/<repo>`). |
+| `CONTAINER_IMAGE`  | Full ECR image URI + tag used for ECS deployment.                                   |
+| `ENABLE_HTTPS`     | Enables HTTPS + ACM certificate + Route53 integration when set to `true`.           |
+| `DOMAIN_NAME`      | Fully Qualified Domain Name served by the ALB (ex: `app.example.com`).              |
+| `HOSTED_ZONE_ID`   | Route53 Hosted Zone ID used to create the ALB alias record.                         |
 
-To configure local development:
 
+## To configure local development in /iac, and /remote_tf_s3_dynamo_db_state_backend:
+
+### 2.1 **/iac**
+
+From the **project root**:
 ```bash
 cd iac
 cp .env.example .env
@@ -108,125 +121,81 @@ set -a              # export all variables defined from now on
 source .env         # load variables from .env
 set +a              # stop auto-exporting
 
-printenv | grep -E '^(ENVIRONMENT|AWS_REGION|SERVICE_NAME|AWS_PROFILE|VPC_CIDR|ALB_ALLOWED_CIDR|DESIRED_COUNT|FARGATE_CPU|FARGATE_MEMORY|AWS_ACCOUNT_ID|ECR_REPOSITORY|ECR_URI|CONTAINER_PORT|TF_STATE_BUCKET|TF_LOCK_TABLE)='
+# Verify the variables
+printenv | grep -E '^(ENVIRONMENT|AWS_REGION|SERVICE_NAME|AWS_PROFILE|VPC_CIDR|ALB_ALLOWED_CIDR|DESIRED_COUNT|FARGATE_CPU|FARGATE_MEMORY|AWS_ACCOUNT_ID|ECR_REPOSITORY|ECR_URI|CONTAINER_PORT|TF_STATE_BUCKET|TF_LOCK_TABLE|ENABLE_HTTPS|DOMAIN_NAME|HOSTED_ZONE_ID)='
+```
+
+### 2.2 **/remote_tf_s3_dynamo_db_state_backend**
+From the **project root**:
+
+```bash
+cd remote_tf_s3_dynamo_db_state_backend
+cp .env.example .env
+````
+
+Edit `.env` to override defaults, and source your variables in the command line:
+
+```bash
+set -a              # export all variables defined from now on
+source .env         # load variables from .env
+set +a              # stop auto-exporting
+
+# Verify the variables
+printenv | grep -E '^(TF_STATE_BUCKET|TF_LOCK_TABLE)='
 ```
 
 ---
 
-# 3. Building & Deploying via GitHub Actions (CI/CD Pipeline)
-
-This project uses a **GitHub Actions** workflow (`.github/workflows/ci-cd.yml`) to perform the full CI/CD pipeline whenever code is pushed to the `main` branch.
-
-### 3.1 CI/CD Workflow Overview
-
-On every push to `main`, the `build-and-deploy` job:
-
-1. Checks out the repository.
-2. Validates required repository variables (`AWS_REGION`, `ENVIRONMENT`, `SERVICE_NAME`).
-3. Configures AWS credentials using an IAM user whose access key and secret are stored in **GitHub Secrets**.
-4. Logs in to Amazon ECR.
-5. Computes:
-
-   * `IMAGE_TAG = $GITHUB_SHA`
-   * `ECR_REPOSITORY = <aws-account>.dkr.ecr.<region>.amazonaws.com/${SERVICE_NAME}`
-6. Ensures the ECR repository exists (creates it if missing).
-7. Builds the Docker image from `app/Dockerfile` and tags it as `${ECR_REPOSITORY}:${IMAGE_TAG}`.
-8. Pushes the image to ECR.
-9. Installs IaC dependencies in `iac/` (`npm ci`, `npx cdktf get`, `npm run build`).
-10. (Dev only) Optionally auto-reconciles existing AWS networking/ALB resources into Terraform state.
-11. Runs:
-
-```bash
-npx cdktf deploy --auto-approve
-```
-
-with `CONTAINER_IMAGE` set to the freshly pushed ECR image.
-
-Result: the ECS task definition is updated, the service rolls out a new revision, and the ALB continues routing traffic with **no manual steps**.
-
-### 3.2 Required GitHub Configuration
-
-**Repository Variables**
-(Settings → Variables → Actions)
-
-| Name             | Example         | Purpose                            |
-| ---------------- | --------------- | ---------------------------------- |
-| `AWS_REGION`     | `us-east-1`     | AWS region for all resources       |
-| `ENVIRONMENT`    | `dev`           | Environment name                   |
-| `SERVICE_NAME`   | `turbovets-app` | Base service/ECR/ECS naming prefix |
-| `CONTAINER_PORT` | `3000`          | Port exposed by the Node app       |
-
-**Repository Secrets**
-(Settings → Secrets and variables → Actions → Secrets)
-
-| Name                    | Purpose                                          |
-| ----------------------- | ------------------------------------------------ |
-| `AWS_ACCESS_KEY_ID`     | IAM user access key (scoped for this assessment) |
-| `AWS_SECRET_ACCESS_KEY` | IAM user secret key                              |
-
-The IAM user used by GitHub Actions should have **least-privilege** permissions covering:
-
-* S3 + DynamoDB (Terraform backend)
-* VPC, subnets, route tables, IGW, security groups
-* ALB, Target Groups, Listeners
-* ECS (cluster, service, task definition)
-* ECR (repository & image operations)
-* CloudWatch Logs
-* IAM roles/policies strictly required by Terraform
+# 3. Deploying the AWS Infrastructure via CDKTF
 
 ### 3.1 Create the Remote Terraform backend (S3 + DynamoDB)
 
-> **Run once per environment** before the first `cdktf deploy` (from your laptop is fine).
-> After this, both local and CI deployments will use the same remote backend.
+> **Run once per environment locally** before the first `cdktf deploy` (from your laptop is fine).
 
 From the **project root**:
 
 ```bash
-# 1. Create S3 bucket (us-east-1 special rule: NO LocationConstraint config block)
-aws s3api create-bucket \
-  --bucket "$TF_STATE_BUCKET" \
-  --region "$AWS_REGION"
+aws configure sso
+# SSO session name:
+# SSO start URL: https://yourcompany.awsapps.com/start # Choose the right user associated with the environment
+# SSO region: us-east-1
+# or "aws configure": quicker for this project, but it's less secure
 
-# 2. Enable versioning
-aws s3api put-bucket-versioning \
-  --bucket "$TF_STATE_BUCKET" \
-  --versioning-configuration Status=Enabled
+cd remote_tf_s3_dynamo_db_state_backend
+# Variables required in .env:
+# ENVIRONMENT, AWS_REGION, SERVICE_NAME, AWS_PROFILE, CONTAINER_PORT,
+# AWS_ACCOUNT_ID, ECR_REPOSITORY, ECR_URI, CONTAINER_IMAGE
+set -a
+source .env
+set +a
 
-# 3. Block all public access (correct JSON syntax)
-aws s3api put-public-access-block \
-  --bucket "$TF_STATE_BUCKET" \
-  --public-access-block-configuration '{
-      "BlockPublicAcls": true,
-      "IgnorePublicAcls": true,
-      "BlockPublicPolicy": true,
-      "RestrictPublicBuckets": true
-  }'
-
-# 4. Enable server-side encryption
-aws s3api put-bucket-encryption \
-  --bucket "$TF_STATE_BUCKET" \
-  --server-side-encryption-configuration '{
-    "Rules": [
-      {
-        "ApplyServerSideEncryptionByDefault": {
-          "SSEAlgorithm": "AES256"
-        }
-      }
-    ]
-  }'
-
-aws dynamodb create-table \
-  --table-name "$TF_LOCK_TABLE" \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST
-
-aws dynamodb describe-table --table-name "$TF_LOCK_TABLE"
+chmod +x create_backend.sh
+./create_backend.sh
 ```
 
-### 3.2 (Optional) Manual Local Image Build, Log in to ECR (Local), and Tag and Push (Local)
+### 3.2 Manual Local Deploy (For Debugging)
+From the `iac` directory:
 
-You normally won’t need this because CI builds and pushes the image, but for local testing:
+```bash
+cd iac
+
+# Variables required in .env:
+# ENVIRONMENT, AWS_REGION, SERVICE_NAME, AWS_PROFILE, CONTAINER_PORT,
+# AWS_ACCOUNT_ID, ECR_REPOSITORY, ECR_URI, CONTAINER_IMAGE
+set -a
+source .env
+set +a
+
+npx cdktf deploy --auto-approve
+```
+
+
+---
+
+# 4. (Optional) Manual Local Deploy (For Debugging)
+
+### 4.1 (Optional) Manual promote a Local Image Build, Log in to ECR (Local), and Tag and Push (Local)
+
 
 ```bash
 cd app
@@ -267,21 +236,8 @@ docker tag turbovets-app-local:latest "$ECR_URI:manual-test"
 docker push "$ECR_URI:manual-test"
 ```
 
----
 
-# 4. Deploying the Infrastructure
-
-## 4.1 Deploy from CI (Preferred)
-
-CI already runs:
-
-```bash
-npx cdktf deploy --auto-approve
-```
-
-on each push to `main`, using the latest Docker image and updating ECS accordingly.
-
-## 4.2 Manual Local Deploy (For Debugging)
+## 4.1 Manual Local Deploy (For Debugging)
 
 From the `iac` directory:
 
@@ -434,7 +390,7 @@ This safely deletes:
 
 # 8. Setup ACM + Route53
 
-### Step 1 – Create a public hosted zone in Route53
+### Step 8.1 – Create a public hosted zone in Route53
 
 In AWS console:
 
@@ -452,7 +408,7 @@ Copy the 4 NS values (they look like `ns-XXXX.awsdns-YY.net`, etc.).
 
 The zone will have an ID like `Z1234567890ABCDEFG` – that’s your `HOSTED_ZONE_ID`.
 
-### Step 2 – Point your registrar to Route53
+### Step 8.2 – Point your registrar to Route53
 
 On the site where you bought `marvinmeite.cloud` (Namecheap, OVH, GoDaddy, whatever):
 
@@ -472,7 +428,7 @@ dig NS marvinmeite.cloud +short
 
 When it returns the Route53 NS servers, you’re good.
 
-### Step 3 – Choose the app subdomain
+### Step 8.3 – Choose the app subdomain
 
 Exemple:
 
@@ -482,7 +438,7 @@ Use that as your `DOMAIN_NAME` in `.env`:
 
 ```bash
 DOMAIN_NAME=aws-docker-terrafrom-github-actions.marvinmeite.cloud
-HOSTED_ZONE_ID=Z1234567890ABCDEFG
+HOSTED_ZONE_ID=Z1234567890ABCDEFG #Z1234567890ABCDEFG is just an exemple
 ENABLE_HTTPS=true
 ```
 
