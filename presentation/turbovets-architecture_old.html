@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurboVets – ECS Fargate Architecture</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0a0e1a;
+      --panel: #0f1419;
+      --card: #151b26;
+      --border: #1f2937;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --accent-2: #a855f7;
+      --accent-2-glow: rgba(168, 85, 247, 0.15);
+      --accent-3: #22c55e;
+      --accent-3-glow: rgba(34, 197, 94, 0.15);
+      --accent-4: #f59e0b;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-strong: #f9fafb;
+      --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(34, 197, 94, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 50px;
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-glow);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 50px;
+      padding: 8px 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .header-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-strong) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .header-subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .tech-stack {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .tech-badge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .tech-badge:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      gap: 24px;
+      margin-top: 40px;
+      animation: fadeIn 0.8s ease-out 0.2s both;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-strong);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .aws-icon {
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .aws-icon-vpc {
+      background-image: url('icons/aws/vpc.svg');
+    }
+
+    .aws-icon-alb {
+      background-image: url('icons/aws/alb.svg');
+    }
+
+    .aws-icon-cloudwatch {
+      background-image: url('icons/aws/cloudwatch.svg');
+    }
+
+    .aws-icon-ecs {
+      background-image: url('icons/aws/ecs.svg');
+    }
+
+    .aws-icon-ecr {
+      background-image: url('icons/aws/ecr.svg');
+    }
+
+    .aws-icon-route53 {
+      background-image: url('icons/aws/route53.svg');
+    }
+
+    .aws-icon-acm {
+      background-image: url('icons/aws/acm.svg');
+    }
+
+    .aws-icon-iam {
+      background-image: url('icons/aws/iam.svg');
+    }
+
+    .aws-icon-s3 {
+      background-image: url('icons/aws/s3.svg');
+    }
+
+    .aws-icon-dynamodb {
+      background-image: url('icons/aws/dynamodb.svg');
+    }
+
+    .card-description {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .card-code {
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 12px;
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      word-break: break-all;
+    }
+
+    .card--primary {
+      background: linear-gradient(135deg, var(--card) 0%, rgba(56, 189, 248, 0.05) 100%);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .card--primary .card-title {
+      color: var(--accent);
+    }
+
+    .card--secondary {
+      background: linear-gradient(135deg, var(--card) 0%, rgba(168, 85, 247, 0.05) 100%);
+      border-color: rgba(168, 85, 247, 0.3);
+    }
+
+    .card--secondary .card-title {
+      color: var(--accent-2);
+    }
+
+    .card--success {
+      background: linear-gradient(135deg, var(--card) 0%, rgba(34, 197, 94, 0.05) 100%);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .card--success .card-title {
+      color: var(--accent-3);
+    }
+
+    .vpc-cluster {
+      background: linear-gradient(135deg, rgba(15, 20, 25, 0.95) 0%, rgba(21, 27, 38, 0.95) 100%);
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      border-radius: 24px;
+      padding: 30px;
+      position: relative;
+      box-shadow: 0 0 60px rgba(56, 189, 248, 0.15);
+    }
+
+    .vpc-cluster::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 24px;
+      padding: 2px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.3;
+    }
+
+    .vpc-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .vpc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .vpc-section {
+      margin-top: 20px;
+    }
+
+    .vpc-section-title {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 0;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .arrow-icon {
+      font-size: 1.5rem;
+      color: var(--accent);
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    .flow-label {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .legend {
+      margin-top: 50px;
+      padding: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      animation: fadeIn 1s ease-out 0.4s both;
+    }
+
+    .legend-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-strong);
+      margin-bottom: 16px;
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .legend-color {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .legend-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+      }
+    }
+
+    @keyframes bounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .architecture {
+        grid-template-columns: 1fr;
+      }
+
+      .column--left,
+      .column--right {
+        order: 2;
+      }
+
+      .column--center {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header-title {
+        font-size: 1.8rem;
+      }
+
+      .vpc-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .legend-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-badge">
+        <span class="status-dot"></span>
+        <span>PRODUCTION-GRADE · AWS INFRASTRUCTURE</span>
+      </div>
+      
+      <h1 class="header-title">TurboVets DevOps Architecture</h1>
+      
+      <p class="header-subtitle">
+        Containerized Node.js application deployed on AWS ECS Fargate with automated CI/CD,
+        served via HTTPS through Application Load Balancer with custom Route 53 domain,
+        infrastructure managed as code with CDKTF and GitHub Actions.
+      </p>
+
+      <div class="tech-stack">
+        <span class="tech-badge">Docker</span>
+        <span class="tech-badge">ECS Fargate</span>
+        <span class="tech-badge">ALB</span>
+        <span class="tech-badge">ECR</span>
+        <span class="tech-badge">Route 53</span>
+        <span class="tech-badge">ACM</span>
+        <span class="tech-badge">CDKTF</span>
+        <span class="tech-badge">GitHub Actions</span>
+        <span class="tech-badge">S3 + DynamoDB</span>
+      </div>
+    </header>
+
+    <div class="architecture">
+      <div class="column column--left">
+        <div class="card">
+          <div class="card-title">
+            <span class="card-icon">🌐</span>
+            End Users
+          </div>
+          <div class="card-description">
+            Clients access the application via browser over HTTPS. HTTP requests are automatically redirected to HTTPS (301).
+          </div>
+          <div class="card-code">
+            https://aws-docker-terrafrom-github-actions.marvinmeite.cloud
+          </div>
+        </div>
+
+        <div class="arrow">
+          <span class="arrow-icon">↓</span>
+          <span class="flow-label">HTTPS :443</span>
+        </div>
+
+        <div class="card card--primary">
+          <div class="card-title">
+            <span class="card-icon aws-icon aws-icon-route53" aria-hidden="true"></span>
+            Route 53 + ACM
+          </div>
+          <div class="card-description">
+            Custom domain configured with Route 53 alias record pointing to ALB. SSL/TLS certificate from AWS Certificate Manager with DNS validation.
+          </div>
+        </div>
+
+        <div class="arrow">
+          <span class="arrow-icon">↓</span>
+          <span class="flow-label">routes to ALB</span>
+        </div>
+
+        <div class="card card--secondary">
+          <div class="card-title">
+            <span class="card-icon">⚙️</span>
+            GitHub Actions CI/CD
+          </div>
+          <div class="card-description">
+            <strong>Automated Pipeline:</strong><br>
+            • <strong>Dev:</strong> Auto-deploy on push to main<br>
+            • <strong>Staging/Prod:</strong> Manual via workflow_dispatch(environment)<br>
+            • Build Docker image (multi-stage)<br>
+            • Tag with commit SHA<br>
+            • Push to ECR (auto-create repo)<br>
+            • Deploy via <code>cdktf deploy</code><br>
+            • Zero-downtime rolling updates<br><br>
+            <strong>Inputs:</strong><br>
+            • <strong>Secrets:</strong> AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY<br>
+            • <strong>Repo vars:</strong> AWS_REGION, SERVICE_NAME, TF_STATE_BUCKET, TF_LOCK_TABLE, VPC_CIDR, ALB_ALLOWED_CIDR, DESIRED_COUNT, FARGATE_CPU/MEMORY, ENABLE_HTTPS, DOMAIN_NAME, HOSTED_ZONE_ID
+          </div>
+        </div>
+
+        <div class="arrow">
+          <span class="arrow-icon">↓</span>
+          <span class="flow-label">provisions infrastructure</span>
+        </div>
+
+        <div class="card card--secondary">
+          <div class="card-title">
+            <span class="card-icon">🏗️</span>
+            CDK for Terraform
+          </div>
+          <div class="card-description">
+            Infrastructure as Code in TypeScript. Manages VPC, subnets, security groups, ALB, ECS cluster, IAM roles, CloudWatch logs. Remote state in S3 with DynamoDB locking.
+          </div>
+        </div>
+      </div>
+
+      <div class="column column--center">
+        <div class="vpc-cluster">
+          <div class="vpc-title">
+            <span class="card-icon aws-icon aws-icon-vpc" aria-hidden="true"></span>
+            AWS Account – VPC (10.0.0.0/16)
+          </div>
+
+          <div class="vpc-grid">
+            <div class="card">
+              <div class="card-title">Internet Gateway</div>
+              <div class="card-description">
+                Entry point from internet. Routes traffic into VPC and enables outbound connectivity for public subnets.
+              </div>
+            </div>
+
+            <div class="card card--primary">
+              <div class="card-title">
+                <span class="card-icon aws-icon aws-icon-alb" aria-hidden="true"></span>
+                Application Load Balancer
+              </div>
+              <div class="card-description">
+                • HTTPS :443 (ACM certificate)<br>
+                • HTTP :80 → 301 redirect<br>
+                • Health checks: /health<br>
+                • Multi-AZ distribution
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span class="card-icon aws-icon aws-icon-cloudwatch" aria-hidden="true"></span>
+                CloudWatch Logs
+              </div>
+              <div class="card-description">
+                Centralized logging for all ECS tasks. Log group: <code>/ecs/turbovets-app-&lt;env&gt;</code>
+              </div>
+            </div>
+          </div>
+
+          <div class="vpc-section">
+            <div class="vpc-section-title">Multi-AZ Subnets</div>
+            <div class="vpc-grid">
+              <div class="card">
+                <div class="card-title">Public Subnet A (AZ-1)</div>
+                <div class="card-description">
+                  10.0.1.0/24<br>
+                  Hosts ALB + ECS Fargate tasks<br>
+                  Auto-assigns public IPs
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Public Subnet B (AZ-2)</div>
+                <div class="card-description">
+                  10.0.2.0/24<br>
+                  High availability failover<br>
+                  Load balancer redundancy
+                </div>
+              </div>
+
+              <div class="card card--success">
+                <div class="card-title">
+                  <span class="card-icon aws-icon aws-icon-ecs" aria-hidden="true"></span>
+                  ECS Fargate Service
+                </div>
+                <div class="card-description">
+                  <strong>Compute Layer:</strong><br>
+                  • CPU: 256 units (0.25 vCPU)<br>
+                  • Memory: 512 MB<br>
+                  • Desired count: 1<br>
+                  • Port: 3000<br>
+                  • Endpoints: / and /health
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vpc-section">
+            <div class="vpc-section-title">Security & Networking</div>
+            <div class="vpc-grid">
+              <div class="card">
+                <div class="card-title">Security Groups</div>
+                <div class="card-description">
+                  <strong>ALB SG:</strong> Inbound HTTP/HTTPS from 0.0.0.0/0<br>
+                  <strong>ECS SG:</strong> Only from ALB on port 3000
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Route Tables</div>
+                <div class="card-description">
+                  Public route table with IGW for 0.0.0.0/0. Associated with both public subnets.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="column column--right">
+        <div class="card card--secondary">
+          <div class="card-title">
+            <span class="card-icon aws-icon aws-icon-ecr" aria-hidden="true"></span>
+            Amazon ECR Registry
+          </div>
+          <div class="card-description">
+            <strong>Repository:</strong> turbovets-app<br>
+            <strong>Tagging:</strong> Commit SHA<br>
+            <strong>Lifecycle:</strong> Auto-created by CI<br>
+            <strong>Security:</strong> Scan on push enabled<br><br>
+            <em>Repository intentionally managed by CI (not in Terraform state) to avoid accidental deletion when non-empty.</em>
+          </div>
+        </div>
+
+        <div class="arrow">
+          <span class="arrow-icon">↓</span>
+          <span class="flow-label">pulls image</span>
+        </div>
+
+        <div class="card card--success">
+          <div class="card-title">
+            <span class="card-icon">🐳</span>
+            Docker Container
+          </div>
+          <div class="card-description">
+            Node.js 22 Alpine base<br>
+            Multi-stage build for optimization<br>
+            <strong>Env vars:</strong><br>
+            • ENVIRONMENT (dev/staging/prod)<br>
+            • AWS_REGION<br>
+            • PORT: 3000
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span class="card-icon aws-icon aws-icon-iam" aria-hidden="true"></span>
+            Task Execution Role
+          </div>
+          <div class="card-description">
+            IAM role for ECS infrastructure:<br>
+            • Pull images from ECR<br>
+            • Write logs to CloudWatch<br>
+            • Managed policies attached
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span class="card-icon aws-icon aws-icon-iam" aria-hidden="true"></span>
+            Task Role (Application)
+          </div>
+          <div class="card-description">
+            Empty by default (least privilege).<br>
+            Extended only when app needs AWS API access.
+          </div>
+        </div>
+
+        <div class="card card--secondary">
+          <div class="card-title">
+            <span class="card-icon aws-icon aws-icon-s3" aria-hidden="true"></span>
+            Terraform State
+          </div>
+          <div class="card-description">
+            <strong>Backend:</strong> S3 bucket<br>
+            <strong>Locking:</strong> DynamoDB table<br>
+            <strong>Isolation:</strong> Per-environment state files<br>
+            <strong>Encryption:</strong> Server-side (AES256)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Architecture Components</div>
+      <div class="legend-grid">
+        <div class="legend-item">
+          <div class="legend-color" style="background: linear-gradient(135deg, var(--accent-glow), rgba(56, 189, 248, 0.3)); border: 2px solid var(--accent);"></div>
+          <div class="legend-text">
+            <strong>Traffic Entry & Routing</strong><br>
+            ALB, HTTPS/HTTP listeners, Route 53 alias, ACM certificate
+          </div>
+        </div>
+        
+        <div class="legend-item">
+          <div class="legend-color" style="background: linear-gradient(135deg, var(--accent-2-glow), rgba(168, 85, 247, 0.3)); border: 2px solid var(--accent-2);"></div>
+          <div class="legend-text">
+            <strong>CI/CD & Infrastructure</strong><br>
+            GitHub Actions, CDKTF, ECR registry, S3 state, DynamoDB locks
+          </div>
+        </div>
+        
+        <div class="legend-item">
+          <div class="legend-color" style="background: linear-gradient(135deg, var(--accent-3-glow), rgba(34, 197, 94, 0.3)); border: 2px solid var(--accent-3);"></div>
+          <div class="legend-text">
+            <strong>Compute Layer</strong><br>
+            ECS Fargate service, tasks, Docker containers
+          </div>
+        </div>
+        
+        <div class="legend-item">
+          <div class="legend-color" style="background: var(--card); border: 2px solid var(--border);"></div>
+          <div class="legend-text">
+            <strong>Supporting Services</strong><br>
+            IAM roles, security groups, CloudWatch logs, networking components
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

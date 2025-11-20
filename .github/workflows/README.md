@@ -68,8 +68,18 @@ This initiates the **build pipeline**:
 1. Builds the Docker image from `app/Dockerfile`
 2. Tags the image using the commit SHA (`GITHUB_SHA`)
 3. Pushes it to the ECR repository
+4. Deploy the solution in DEV
 
 This ensures that every commit to `main` produces an immutable image stored in AWS.
+
+#### Check Fargate logs since 1 day
+
+```bash
+aws logs tail /ecs/${ECR_REPOSITORY}${ENVIRONMENT} \
+  --since 1d \
+  --profile $AWS_PROFILE \
+  --region $AWS_REGION
+```
 
 ---
 
@@ -165,11 +175,15 @@ This avoids accidental cross-environment deployments and mirrors real enterprise
 
 ---
 
-# 5. Required GitHub Secrets (Sensitive)
+# 5. Required GitHub Secrets per environment (Sensitive)
+
+Create an environement:
+
+**GitHub → Settings → environments → New Environment → dev** 
 
 Configure these under:
 
-**GitHub → Settings → Secrets and variables → Actions → Secrets**
+**GitHub → Settings → environments →  Secrets and variables → Actions → Secrets → Manage environenment secrets**
 
 | Secret                  | Purpose                                       |
 | ----------------------- | --------------------------------------------- |
@@ -183,8 +197,7 @@ These credentials must belong to the IAM principal dedicated to CI/CD and should
 # 6. Required GitHub Variables (Non-sensitive per environment)
 
 Configure in:
-
-**GitHub → Settings → Secrets and variables → Actions → Variables**
+**GitHub → Settings → environments →  Secrets and variables → Actions → Variables → Manage environenment Variables**
 
 | Variable           | Example                     | Description                              |
 | ------------------ | --------------------------- | ---------------------------------------- |
