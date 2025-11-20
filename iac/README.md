@@ -318,7 +318,7 @@ aws logs tail /ecs/$ECR_REPOSITORY \
 ## Check Fargate logs since 1 day
 
 ```bash
-aws logs tail /ecs/$ECR_REPOSITORY \
+aws logs tail /ecs/${ECR_REPOSITORY}${ENVIRONMENT} \
   --since 1d \
   --profile $AWS_PROFILE \
   --region $AWS_REGION

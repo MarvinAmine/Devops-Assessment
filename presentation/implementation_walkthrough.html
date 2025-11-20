@@ -1,0 +1,1004 @@
+<!-- File: /DevOps/tv-devops-assessment/presentation/turbovets-architecture_v3.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurboVets – Implementation Walkthrough</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0a0e1a;
+      --panel: #0f1419;
+      --card: #151b26;
+      --border: #1f2937;
+      --accent: #38bdf8;
+      --accent-2: #a855f7;
+      --accent-3: #22c55e;
+      --accent-4: #f59e0b;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-strong: #f9fafb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 0;
+      margin: 0;
+    }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10, 14, 26, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-strong) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.3s ease;
+      cursor: pointer;
+    }
+
+    .nav-link:hover {
+      color: var(--accent);
+    }
+
+    /* Main container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 100px 32px 60px;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 80px;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    .section-header {
+      margin-bottom: 32px;
+    }
+
+    .section-number {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 40px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-strong);
+      margin-bottom: 12px;
+    }
+
+    .section-description {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 900px;
+    }
+
+    /* Content grid */
+    .content-grid {
+      display: grid;
+      gap: 32px;
+    }
+
+    .content-grid--2col {
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    }
+
+    /* Screenshot card */
+    .screenshot-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .screenshot-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .screenshot-card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, var(--panel) 0%, var(--card) 100%);
+    }
+
+    .screenshot-card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-strong);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .screenshot-card-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .screenshot-card-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #000;
+    }
+
+    .screenshot-card-footer {
+      padding: 16px 24px;
+      background: var(--panel);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* AWS icon sprites */
+    .card-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .aws-icon {
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .aws-icon-vpc { background-image: url('icons/aws/vpc.svg'); }
+    .aws-icon-alb { background-image: url('icons/aws/alb.svg'); }
+    .aws-icon-cloudwatch { background-image: url('icons/aws/cloudwatch.svg'); }
+    .aws-icon-ecs { background-image: url('icons/aws/ecs.svg'); }
+    .aws-icon-ecr { background-image: url('icons/aws/ecr.svg'); }
+    .aws-icon-route53 { background-image: url('icons/aws/route53.svg'); }
+    .aws-icon-acm { background-image: url('icons/aws/acm.svg'); }
+    .aws-icon-iam { background-image: url('icons/aws/iam.svg'); }
+    .aws-icon-s3 { background-image: url('icons/aws/s3.svg'); }
+    .aws-icon-dynamodb { background-image: url('icons/aws/dynamodb.svg'); }
+    .aws-icon-fargate { background-image: url('icons/aws/Fargate.svg'); }
+    .aws-icon-github-actions { background-image: url('icons/aws/GitHubActions.svg'); }
+    .aws-icon-route-table { background-image: url('icons/aws/routeTable.svg'); }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge--primary {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .badge--success {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-3);
+      border: 1px solid var(--accent-3);
+    }
+
+    .badge--warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-4);
+      border: 1px solid var(--accent-4);
+    }
+
+    .badge--secondary {
+      background: rgba(168, 85, 247, 0.15);
+      color: var(--accent-2);
+      border: 1px solid var(--accent-2);
+    }
+
+    /* Info box */
+    .info-box {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.05) 0%, rgba(56, 189, 248, 0.02) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+
+    .info-box-title {
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-box-content {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .info-box-content ul {
+      margin-left: 20px;
+      margin-top: 8px;
+    }
+
+    .info-box-content li {
+      margin-bottom: 6px;
+    }
+
+    .info-box-content code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+
+    /* Key points */
+    .key-points {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin: 32px 0;
+    }
+
+    .key-point {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .key-point:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .key-point-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+
+    .key-point-title {
+      font-weight: 600;
+      color: var(--text-strong);
+      margin-bottom: 8px;
+    }
+
+    .key-point-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* Full width screenshot */
+    .screenshot-full {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin: 24px 0;
+    }
+
+    .screenshot-full img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Hero section */
+    .hero {
+      text-align: center;
+      padding: 60px 0;
+      margin-bottom: 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 50px;
+      padding: 10px 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+
+    .hero-title {
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-strong) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .hero-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 800px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      text-align: center;
+    }
+
+    .hero-stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+
+    .hero-stat-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .content-grid--2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav {
+        padding: 12px 20px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .container {
+        padding: 80px 20px 40px;
+      }
+
+      .hero-title {
+        font-size: 2rem;
+      }
+
+      .section-title {
+        font-size: 1.5rem;
+      }
+
+      .hero-stats {
+        gap: 24px;
+      }
+    }
+
+    /* Smooth scroll */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-title">TurboVets Implementation</div>
+    <div class="nav-links">
+      <a class="nav-link" href="#cicd">CI/CD Pipeline</a>
+      <a class="nav-link" href="#iam">IAM & Security</a>
+      <a class="nav-link" href="#infrastructure">Infrastructure</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-badge">
+        <span>✓</span>
+        <span>PRODUCTION-GRADE IMPLEMENTATION</span>
+      </div>
+      
+      <h1 class="hero-title">Implementation Walkthrough</h1>
+      
+      <p class="hero-subtitle">
+        Real-world deployment of containerized Node.js application on AWS ECS Fargate
+        with automated CI/CD, infrastructure as code, and production-ready security practices.
+      </p>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-number">100%</span>
+          <span class="hero-stat-label">Automated</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-number">3</span>
+          <span class="hero-stat-label">Environments</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-number">Zero</span>
+          <span class="hero-stat-label">Downtime</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-number">HTTPS</span>
+          <span class="hero-stat-label">Secured</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 1: CI/CD Pipeline -->
+    <section id="cicd" class="section">
+      <div class="section-header">
+        <div class="section-number">1</div>
+        <h2 class="section-title">CI/CD Pipeline with GitHub Actions</h2>
+        <p class="section-description">
+          Fully automated deployment pipeline that builds, tests, and deploys the application
+          with environment-specific configuration and secrets management.
+        </p>
+      </div>
+
+      <div class="key-points">
+        <div class="key-point">
+          <div class="key-point-icon">🔄</div>
+          <div class="key-point-title">Auto-Deploy (Dev)</div>
+          <div class="key-point-text">
+            Automatic deployment to dev on push to main branch
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon">🎯</div>
+          <div class="key-point-title">Manual Promotion</div>
+          <div class="key-point-text">
+            Staging/Prod require manual workflow_dispatch for controlled releases
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon">🔐</div>
+          <div class="key-point-title">Secrets Management</div>
+          <div class="key-point-text">
+            AWS credentials stored securely in GitHub Secrets
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon">⚙️</div>
+          <div class="key-point-title">Config Variables</div>
+          <div class="key-point-text">
+            Infrastructure parameters via GitHub environment variables
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid content-grid--2col">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="card-icon aws-icon aws-icon-github-actions" aria-hidden="true"></span>
+              <span class="badge badge--success">✓ SUCCESS</span>
+              GitHub Actions Jobs
+            </div>
+            <div class="screenshot-card-subtitle">
+              Three-stage pipeline: Build → Push to ECR → Deploy with CDKTF
+            </div>
+          </div>
+          <img src="github_actions_job.png" alt="GitHub Actions Jobs" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Shows successful execution of build-image, deploy-dev jobs with commit SHA tagging
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="card-icon aws-icon aws-icon-ecr" aria-hidden="true"></span>
+              <span class="badge badge--primary">DOCKER</span>
+              Build & Push to ECR
+            </div>
+            <div class="screenshot-card-subtitle">
+              Multi-stage Docker build with ECR repository auto-creation
+            </div>
+          </div>
+          <img src="github_action_docker_image_build_and_ECR_push.png" alt="Docker Build and ECR Push" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Image tagged with commit SHA for immutable deployments across environments
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual staging/prod deployment screenshot -->
+      <div class="content-grid">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="card-icon aws-icon aws-icon-github-actions" aria-hidden="true"></span>
+              <span class="badge badge--warning">MANUAL</span>
+              Staging & Prod Deployment (workflow_dispatch)
+            </div>
+            <div class="screenshot-card-subtitle">
+              Controlled promotion using GitHub Actions manual trigger with environment input
+            </div>
+          </div>
+          <img src="github_actions_manual_staging_and_prod_deploy.png" alt="GitHub Actions Manual Staging and Prod Deploy" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Shows the <code>environment</code> choice (dev / staging / prod) and manual approval flow for higher environments.
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">
+          <span>💡</span>
+          ECR Lifecycle Management Strategy
+        </div>
+        <div class="info-box-content">
+          The ECR repository is intentionally managed by the CI pipeline (not Terraform) to prevent
+          accidental deletion when the repository contains images. This design decision solves the
+          <code>RepositoryNotEmptyException</code> that would occur if Terraform tried to destroy
+          a non-empty ECR repository.
+          <ul>
+            <li>CI creates repository on-demand if it doesn't exist</li>
+            <li>Terraform state does not track ECR (decoupled lifecycle)</li>
+            <li>Images remain safe during infrastructure updates/rebuilds</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="card-icon aws-icon aws-icon-cloudwatch" aria-hidden="true"></span>
+              <span class="badge badge--secondary">CDKTF</span>
+              Infrastructure Deployment
+            </div>
+            <div class="screenshot-card-subtitle">
+              Terraform deployment via CDKTF with CloudWatch logging
+            </div>
+          </div>
+          <img src="github_actions_terraform_and_cloudwatch.png" alt="Terraform and CloudWatch" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Shows <code>cdktf deploy</code> execution with successful resource creation and output variables
+          </div>
+        </div>
+      </div>
+
+      <!-- Remote Terraform backend – S3 + DynamoDB -->
+      <div class="info-box">
+        <div class="info-box-title">
+          <span>🧱</span>
+          Remote Terraform Backend (S3 + DynamoDB)
+        </div>
+        <div class="info-box-content">
+          Terraform state is stored remotely to support collaboration, history, and safe concurrent usage:
+          <ul>
+            <li><strong>S3 bucket:</strong> stores the <code>terraform.tfstate</code> files per environment</li>
+            <li><strong>DynamoDB table:</strong> provides state locking to prevent concurrent <code>cdktf deploy</code> runs from corrupting the state</li>
+            <li><strong>Backend config:</strong> wired through GitHub repository variables (<code>TF_STATE_BUCKET</code>, <code>TF_LOCK_TABLE</code>)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="content-grid content-grid--2col">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--primary">S3 BACKEND</span>
+              Remote Terraform State in S3
+            </div>
+            <div class="screenshot-card-subtitle">
+              Centralized state storage with per-environment isolation
+            </div>
+          </div>
+          <img src="AWS_remote_terraform_backend_S3.png" alt="AWS Remote Terraform Backend S3" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            S3 bucket used as Terraform backend, with prefixes for each environment and server-side encryption enabled.
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--secondary">LOCKING</span>
+              DynamoDB State Lock Table
+            </div>
+            <div class="screenshot-card-subtitle">
+              Prevents concurrent Terraform operations on the same state
+            </div>
+          </div>
+          <img src="AWS_remote_terraform_backend_dynamoDB.png" alt="AWS Remote Terraform Backend DynamoDB" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            DynamoDB table configured as the lock table for the backend, ensuring only one <code>cdktf</code>/<code>terraform</code> operation can modify the state at a time.
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid content-grid--2col">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--warning">🔒 SECRETS</span>
+              GitHub Secrets
+            </div>
+            <div class="screenshot-card-subtitle">
+              AWS credentials stored securely per environment
+            </div>
+          </div>
+          <img src="github_actions_secrets.png" alt="GitHub Secrets" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code> injected at runtime (never exposed in logs)
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--primary">⚙️ CONFIG</span>
+              Environment Variables
+            </div>
+            <div class="screenshot-card-subtitle">
+              Infrastructure parameters configured per environment
+            </div>
+          </div>
+          <img src="github_actions_variables.png" alt="GitHub Variables" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Includes <code>AWS_REGION</code>, <code>SERVICE_NAME</code>, <code>VPC_CIDR</code>, TF state config, HTTPS settings, and more.
+          </div>
+        </div>
+      </div>
+
+      <div class="screenshot-full">
+        <img src="github_action_variable_injections.png" alt="Variable Injection in Action" />
+      </div>
+      <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 12px;">
+        Complete variable injection during deployment showing all environment-specific configuration
+      </p>
+    </section>
+
+    <!-- Section 2: IAM & Security -->
+    <section id="iam" class="section">
+      <div class="section-header">
+        <div class="section-number">2</div>
+        <h2 class="section-title">IAM Configuration & Security</h2>
+        <p class="section-description">
+          Least-privilege IAM setup with dedicated CI/CD user, grouped permissions,
+          and role-based access control for ECS tasks.
+        </p>
+      </div>
+
+      <div class="key-points">
+        <!-- keep emoji icons here as requested -->
+        <div class="key-point">
+          <div class="key-point-icon">👤</div>
+          <div class="key-point-title">Dedicated CI User</div>
+          <div class="key-point-text">
+            Separate IAM user for GitHub Actions with programmatic access
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon">👥</div>
+          <div class="key-point-title">Group-Based Access</div>
+          <div class="key-point-text">
+            Permissions managed through IAM groups for easier maintenance
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon">🎭</div>
+          <div class="key-point-title">Task Roles</div>
+          <div class="key-point-text">
+            Separate execution and application roles for ECS tasks
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon">🔒</div>
+          <div class="key-point-title">Least Privilege</div>
+          <div class="key-point-text">
+            Minimum required permissions for each component
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid content-grid--2col">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--primary">IAM USER</span>
+              CI/CD User Overview
+            </div>
+            <div class="screenshot-card-subtitle">
+              Dedicated user for GitHub Actions pipeline
+            </div>
+          </div>
+          <img src="AWS_user.png" alt="AWS IAM User" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            <code>turbovets-github-actions-user</code> with programmatic access credentials
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--primary">DETAILS</span>
+              User Configuration
+            </div>
+            <div class="screenshot-card-subtitle">
+              User summary with access keys and group membership
+            </div>
+          </div>
+          <img src="AWS_user_summary.png" alt="AWS User Summary" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Created with an access key used exclusively by GitHub Actions.
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid content-grid--2col">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--secondary">GROUP</span>
+              Group Membership
+            </div>
+            <div class="screenshot-card-subtitle">
+              User assigned to <code>turbovets-github-actions-group</code>
+            </div>
+          </div>
+          <img src="AWS_user_in_group.png" alt="User in Group" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Group-based permission management for easier policy updates
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--success">PERMISSIONS</span>
+              Group Policies
+            </div>
+            <div class="screenshot-card-subtitle">
+              Comprehensive permissions for CI/CD operations
+            </div>
+          </div>
+          <img src="AWS_group_permissions.png" alt="Group Permissions" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Includes ECR, ECS, VPC, IAM, CloudWatch, ALB, Route53, and ACM permissions required by the pipeline.
+          </div>
+        </div>
+      </div>
+
+      <div class="screenshot-full">
+        <img src="AWS_user_permission.png" alt="Complete User Permissions" />
+      </div>
+      <div class="screenshot-full">
+        <img src="AWS_policie_TurboVetsDevOpsCiACMRoute53Policy.png" alt="TurboVetsDevOpsCiACMRoute53Policy policy" />
+      </div>
+      <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 12px;">
+        Full permission breakdown showing inherited group policies and dedicated Route53/ACM policy.
+      </p>
+
+      <div class="info-box">
+        <div class="info-box-title">
+          <span>🔐</span>
+          IAM Best Practices Implemented
+        </div>
+        <div class="info-box-content">
+          <ul>
+            <li><strong>Dedicated CI/CD user:</strong> Separate from human users for audit trail</li>
+            <li><strong>Group-based permissions:</strong> Easier to manage and update policies</li>
+            <li><strong>No inline policies:</strong> All permissions managed through groups and managed policies</li>
+            <li><strong>Access key rotation:</strong> Credentials can be rotated without code changes</li>
+            <li><strong>Task execution role:</strong> For ECS infrastructure operations (ECR pull, CloudWatch logs)</li>
+            <li><strong>Task application role:</strong> Empty by default, extended only when app needs AWS APIs</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: AWS Infrastructure -->
+    <section id="infrastructure" class="section">
+      <div class="section-header">
+        <div class="section-number">3</div>
+        <h2 class="section-title">AWS Infrastructure Deployment</h2>
+        <p class="section-description">
+          Multi-AZ VPC with ECS Fargate cluster, Application Load Balancer, and production-ready
+          networking configuration deployed via CDKTF.
+        </p>
+      </div>
+
+      <div class="key-points">
+        <div class="key-point">
+          <div class="key-point-icon aws-icon aws-icon-vpc" aria-hidden="true"></div>
+          <div class="key-point-title">Multi-AZ VPC</div>
+          <div class="key-point-text">
+            2 subnets for high availability, and fault tolerance across two availability zones.
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon aws-icon aws-icon-alb" aria-hidden="true"></div>
+          <div class="key-point-title">Application Load Balancer</div>
+          <div class="key-point-text">
+            HTTPS with ACM certificate and HTTP→HTTPS redirect.
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon aws-icon aws-icon-fargate" aria-hidden="true"></div>
+          <div class="key-point-title">ECS Fargate</div>
+          <div class="key-point-text">
+            Serverless container orchestration with auto-scaling capability.
+          </div>
+        </div>
+        <div class="key-point">
+          <div class="key-point-icon aws-icon aws-icon-route-table" aria-hidden="true"></div>
+          <div class="key-point-title">Security Groups</div>
+          <div class="key-point-text">
+            Least-privilege network access control between ALB and tasks.
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--success">ACTIVE</span>
+              ECS Cluster Overview
+            </div>
+            <div class="screenshot-card-subtitle">
+              <code>turbovets-app-dev-cluster</code> with running service
+            </div>
+          </div>
+          <img src="AWS_ECS_clusters.png" alt="ECS Clusters" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Cluster created and managed by CDKTF with environment-specific naming.
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid content-grid--2col">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--primary">SERVICE</span>
+              ECS Service Summary
+            </div>
+            <div class="screenshot-card-subtitle">
+              Fargate service configuration and task details
+            </div>
+          </div>
+          <img src="AWS_ECS_cluster_sumary.png" alt="ECS Service Summary" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Shows desired count (1), running tasks, and load balancer integration.
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--success">✓ HEALTHY</span>
+              Health Status
+            </div>
+            <div class="screenshot-card-subtitle">
+              Target group health checks passing
+            </div>
+          </div>
+          <img src="AWS_ECS_cluster_sumary_health.png" alt="ECS Health Status" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            ALB health checks on <code>/health</code> endpoint returning <code>200 OK</code>.
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="screenshot-card">
+          <div class="screenshot-card-header">
+            <div class="screenshot-card-title">
+              <span class="badge badge--primary">NETWORKING</span>
+              Network Configuration
+            </div>
+            <div class="screenshot-card-subtitle">
+              VPC, subnets, and security group assignments
+            </div>
+          </div>
+          <img src="AWS_ECS_cluster_network_configuration.png" alt="ECS Network Configuration" class="screenshot-card-image" />
+          <div class="screenshot-card-footer">
+            Tasks deployed across public subnets in multiple AZs, fronted by an internet-facing ALB with locked-down security groups.
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">
+          <span>📌</span>
+          Infrastructure Highlights
+        </div>
+        <div class="info-box-content">
+          <ul>
+            <li>All core resources (VPC, ALB, ECS, security groups) are provisioned via CDK for Terraform.</li>
+            <li>Traffic enters through Route 53 → ALB (HTTPS) → ECS Fargate tasks.</li>
+            <li>Observability via CloudWatch Logs for each ECS task family and environment.</li>
+            <li>Networking and IAM are aligned with AWS Well-Architected best practices for small, production-grade workloads.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

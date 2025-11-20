@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurboVets – ECS Fargate Topology</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0a0e1a;
+      --panel: #0f1419;
+      --card: #151b26;
+      --border: #1f2937;
+      --accent: #38bdf8;           /* Blue */
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --accent-2: #a855f7;         /* Purple */
+      --accent-3: #22c55e;         /* Green */
+      --accent-4: #f59e0b;         /* Orange */
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-strong: #f9fafb;
+      
+      /* Diagram Specific Colors */
+      --aws-cloud-bg: #1a1f2e;
+      --vpc-border: #8c52ff;
+      --vpc-bg: rgba(140, 82, 255, 0.05);
+      --az-border: #4b5563;
+      --az-bg: rgba(75, 85, 99, 0.1);
+      --subnet-public-border: #22c55e;
+      --subnet-public-bg: rgba(34, 197, 94, 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container { max-width: 1600px; margin: 0 auto; }
+
+    /* --- Header --- */
+    .header { text-align: center; margin-bottom: 60px; }
+    .header-title { 
+      font-size: 2.5rem; font-weight: 700; 
+      background: linear-gradient(135deg, var(--text-strong) 0%, var(--accent) 100%); 
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+      margin-bottom: 16px; 
+    }
+    .header-subtitle { color: var(--text-muted); max-width: 800px; margin: 0 auto; line-height: 1.5; }
+
+    /* --- Diagram Grid Layout --- */
+    .diagram-wrapper {
+      display: grid;
+      grid-template-columns: 350px 1fr; /* Left Sidebar width fixed, Right side flexible */
+      gap: 40px;
+      align-items: start;
+    }
+
+    /* --- Card/Box Styles --- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-strong);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* AWS Icon */
+    .icon-aws {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    /* Details List inside cards */
+    .detail-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .detail-list li {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      padding-left: 12px;
+      position: relative;
+      line-height: 1.4;
+    }
+    .detail-list li::before {
+      content: '•'; position: absolute; left: 0; color: var(--accent);
+    }
+    .detail-list li strong { color: var(--text-main); }
+
+    /* Highlighted URL Box */
+    .url-highlight {
+      margin-top: 12px;
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.15), rgba(56, 189, 248, 0.05));
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 10px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      word-break: break-all; /* Critical for long URLs */
+      text-decoration: none;
+      display: block;
+      transition: all 0.2s ease;
+    }
+    .url-highlight:hover {
+      box-shadow: 0 0 15px var(--accent-glow);
+      transform: translateY(-1px);
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.25), rgba(56, 189, 248, 0.1));
+    }
+
+    /* Small Property Tags */
+    .prop-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+
+    /* --- The Nested Topology Styles --- */
+    .aws-cloud-box {
+      background: var(--aws-cloud-bg);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      position: relative;
+    }
+    
+    .box-label {
+      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+      margin-bottom: 15px; display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 6px; background: rgba(0,0,0,0.3);
+      letter-spacing: 0.5px;
+    }
+
+    /* VPC */
+    .vpc-box {
+      border: 2px solid var(--vpc-border);
+      background: var(--vpc-bg);
+      border-radius: 16px;
+      padding: 25px;
+    }
+
+    .vpc-top-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* ALB Section */
+    .alb-container {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 15px;
+      margin: 0 auto 30px;
+      width: 90%;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    /* AZ & Subnets */
+    .az-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+    }
+
+    .az-box {
+      border: 2px dashed var(--az-border);
+      background: var(--az-bg);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .subnet-box {
+      border: 1px solid var(--subnet-public-border);
+      background: var(--subnet-public-bg);
+      border-radius: 10px;
+      padding: 15px;
+      height: 100%;
+    }
+
+    /* ECS Task Card inside Subnet */
+    .ecs-task-card {
+      background: #111827;
+      border: 1px solid var(--accent-3);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .ecs-task-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 8px;
+    }
+
+    /* Arrows */
+    .arrow-down { text-align: center; color: var(--accent); font-size: 1.5rem; margin: 10px 0; }
+    
+    @media (max-width: 1100px) {
+      .diagram-wrapper { grid-template-columns: 1fr; }
+      .az-container { grid-template-columns: 1fr; }
+      .vpc-top-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="box-label" style="color: var(--accent); border: 1px solid var(--accent);">
+        Architecture Topology
+      </div>
+      <h1 class="header-title">TurboVets Infrastructure Map</h1>
+      <p class="header-subtitle">
+        Detailed topological view of the VPC, Subnets, and containerized resources.
+      </p>
+    </header>
+
+    <div class="diagram-wrapper">
+      
+      <div class="external-column">
+        
+        <div class="card">
+          <div class="card-title">👤 End Users</div>
+          <ul class="detail-list">
+            <li>Access via Browser</li>
+            <li><strong style="color: var(--accent);">HTTPS Only</strong> (Port 443)</li>
+            <li>301 Redirect from HTTP</li>
+          </ul>
+          
+          <a href="https://aws-docker-terrafrom-github-actions.marvinmeite.cloud" target="_blank" class="url-highlight">
+            https://aws-docker-terrafrom-github-actions.marvinmeite.cloud
+          </a>
+        </div>
+
+        <div class="arrow-down">⬇️</div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-4);">
+          <div class="card-title">
+            <img src="icons/aws/route53.svg" alt="Route 53" class="icon-aws" />
+            Route 53 &amp; ACM
+          </div>
+          <ul class="detail-list">
+            <li><strong>Hosted Zone:</strong> Alias Record → ALB</li>
+            <li><strong>ACM:</strong> Public SSL/TLS Certificate</li>
+            <li>DNS Validation enabled</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-2); margin-top: 40px;">
+          <div class="card-title">
+            <img src="icons/aws/GitHubActions.svg" alt="GitHub Actions" class="icon-aws" />
+            GitHub Actions (CI/CD)
+          </div>
+          <div class="prop-tag">Triggers: Push/Dispatch</div>
+          <ul class="detail-list" style="margin-top:8px;">
+            <li><strong>Build:</strong> Multi-stage Docker build</li>
+            <li><strong>Tag:</strong> Commit SHA</li>
+            <li><strong>Secrets:</strong> AWS_KEYS injected</li>
+            <li><strong>CDKTF:</strong> <code>npm install</code> &amp; <code>deploy</code></li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-2);">
+          <div class="card-title">
+            <img src="icons/aws/Terraform.svg" alt="Terraform" class="icon-aws" />
+            CDK for Terraform
+          </div>
+          <ul class="detail-list">
+            <li>TypeScript IaC</li>
+            <li>Manages State &amp; Locking</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-left: 4px solid #eab308; margin-top: 40px;">
+          <div class="card-title">
+            <img src="icons/aws/s3.svg" alt="Amazon S3" class="icon-aws" />
+            <img src="icons/aws/dynamodb.svg" alt="Amazon DynamoDB" class="icon-aws" />
+            S3 + DynamoDB
+          </div>
+          <ul class="detail-list">
+            <li><strong>S3:</strong> Remote tfstate storage</li>
+            <li>Encryption: AES256 (Server-side)</li>
+            <li><strong>DynamoDB:</strong> State locking table</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-left: 4px solid #ec4899;">
+          <div class="card-title">
+            <img src="icons/aws/ecr.svg" alt="Amazon ECR" class="icon-aws" />
+            Amazon ECR
+          </div>
+          <ul class="detail-list">
+            <li><strong>Repo:</strong> <code>turbovets-app</code></li>
+            <li><strong>Policy:</strong> Scan on push</li>
+            <li>Managed by CI (prevents deletion)</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="aws-cloud-box">
+        <div class="box-label" style="color: #f59e0b;">
+          ☁️ AWS Region (us-east-1)
+        </div>
+
+        <div class="vpc-box">
+          <div class="box-label" style="color: #a855f7;">
+            <img src="icons/aws/vpc.svg" alt="VPC" class="icon-aws" />
+            VPC &nbsp; <span style="color: var(--text-muted); text-transform: none;">10.0.0.0/16</span>
+          </div>
+
+          <div class="vpc-top-row">
+            <div class="card" style="margin:0; background: var(--panel);">
+              <div class="card-title">
+                <img src="icons/aws/routeTable.svg" alt="Route Table" class="icon-aws" />
+                Internet Gateway &amp; Routes
+              </div>
+              <ul class="detail-list">
+                <li>Attached to VPC</li>
+                <li><strong>Route Table:</strong> 0.0.0.0/0 → IGW</li>
+                <li>Associated with Public Subnets</li>
+              </ul>
+            </div>
+
+            <div class="card" style="margin:0; background: var(--panel);">
+              <div class="card-title">
+                <img src="icons/aws/cloudwatch.svg" alt="CloudWatch Logs" class="icon-aws" />
+                CloudWatch Logs
+              </div>
+              <ul class="detail-list">
+                <li><strong>Group:</strong> <code>/ecs/turbovets-app-prod</code></li>
+                <li>Centralized task logging</li>
+                <li>Retention policies applied</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="alb-container">
+            <div class="card-title" style="justify-content: center; color: var(--accent);">
+              <img src="icons/aws/alb.svg" alt="Application Load Balancer" class="icon-aws" />
+              Application Load Balancer
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div>
+                <div class="prop-tag">Multi-AZ</div>
+                <div class="prop-tag">Internet Facing</div>
+                <ul class="detail-list" style="margin-top: 8px;">
+                  <li><strong>Listener HTTPS:</strong> Port 443 (Cert attached)</li>
+                  <li><strong>Listener HTTP:</strong> Port 80 (301 Redirect)</li>
+                  <li><strong>Target Group:</strong> IP Mode (Fargate)</li>
+                  <li><strong>Health Check:</strong> <code>/health</code></li>
+                </ul>
+              </div>
+              <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 15px;">
+                <strong style="font-size: 0.8rem; color: var(--accent-4);">🛡️ ALB Security Group</strong>
+                <ul class="detail-list">
+                  <li><strong>Inbound:</strong> 0.0.0.0/0 (80/443)</li>
+                  <li><strong>Outbound:</strong> To ECS SG (Port 3000)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="az-container">
+            
+            <div class="az-box">
+              <div class="box-label" style="color: var(--text-muted);">Availability Zone 1</div>
+              
+              <div class="subnet-box">
+                <div class="box-label" style="color: var(--accent-3); background: rgba(34, 197, 94, 0.1);">
+                  🔓 Public Subnet A &nbsp; <span style="text-transform:none; opacity:0.7">10.0.1.0/24</span>
+                </div>
+                
+                <div class="ecs-task-card">
+                  <div class="ecs-task-header">
+                    <span style="color: var(--accent-3); font-weight:700; display:flex; align-items:center; gap:6px;">
+                      <img src="icons/aws/Fargate.svg" alt="ECS Fargate" class="icon-aws" />
+                      ECS Fargate Task
+                    </span>
+                    <span class="prop-tag" style="background: var(--accent-3); color: #000;">RUNNING</span>
+                  </div>
+                  
+                  <div style="margin-bottom: 10px;">
+                    <span class="prop-tag">CPU: 256 (.25 vCPU)</span>
+                    <span class="prop-tag">Mem: 512 MB</span>
+                    <span class="prop-tag">Desired: 1</span>
+                  </div>
+
+                  <strong style="font-size: 0.75rem; color: var(--accent);">📦 Docker Container</strong>
+                  <ul class="detail-list" style="margin-bottom: 10px;">
+                    <li><strong>Image:</strong> Node.js 22 Alpine</li>
+                    <li><strong>Env:</strong> <code>PORT=3000</code>, <code>AWS_REGION</code></li>
+                    <li><strong>App:</strong> Serves endpoints <code>/</code> and <code>/health</code></li>
+                  </ul>
+
+                  <strong style="font-size: 0.75rem; color: var(--accent-4);">🛡️ ECS Security Group</strong>
+                  <ul class="detail-list" style="margin-bottom: 10px;">
+                    <li><strong>Inbound:</strong> Port 3000 (From ALB Only)</li>
+                  </ul>
+
+                  <strong style="font-size: 0.75rem; color: var(--accent-2); display:flex; align-items:center; gap:6px;">
+                    <img src="icons/aws/iam.svg" alt="IAM" class="icon-aws" />
+                    IAM Roles
+                  </strong>
+                  <ul class="detail-list">
+                    <li><strong>Execution Role:</strong> Pull ECR, Push Logs</li>
+                    <li><strong>Task Role:</strong> App specific AWS SDK calls</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="az-box">
+              <div class="box-label" style="color: var(--text-muted);">Availability Zone 2</div>
+              
+              <div class="subnet-box">
+                <div class="box-label" style="color: var(--accent-3); background: rgba(34, 197, 94, 0.1);">
+                  🔓 Public Subnet B &nbsp; <span style="text-transform:none; opacity:0.7">10.0.2.0/24</span>
+                </div>
+                
+                <div class="ecs-task-card" style="opacity: 0.7; border-style: dashed;">
+                  <div class="ecs-task-header">
+                    <span style="color: var(--text-muted); font-weight:700;">🐳 HA / Failover Capacity</span>
+                  </div>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                    Subnet configured for high availability. ALB automatically routes here if traffic spikes or AZ-1 fails.
+                  </p>
+                  <div style="margin-top:10px">
+                    <span class="prop-tag">Same Security Groups</span>
+                    <span class="prop-tag">Same Route Table</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

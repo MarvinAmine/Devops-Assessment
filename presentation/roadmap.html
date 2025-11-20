@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurboVets – Project Roadmap</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0a0e1a;
+      --panel: #0f1419;
+      --card: #151b26;
+      --border: #1f2937;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --accent-2: #a855f7;
+      --accent-3: #22c55e;
+      --accent-4: #f59e0b;
+      --accent-red: #ef4444;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-strong: #f9fafb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 60px; }
+    .header-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, var(--accent-4), var(--accent-red));
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .header-title { 
+      font-size: 3rem; 
+      font-weight: 700; 
+      background: linear-gradient(135deg, var(--text-strong) 0%, var(--accent) 100%); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+      margin-bottom: 16px; 
+    }
+    .header-subtitle { 
+      color: var(--text-muted); 
+      max-width: 700px; 
+      margin: 0 auto; 
+      line-height: 1.6;
+      font-size: 1.1rem;
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 60px 0 30px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-icon {
+      font-size: 2rem;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--card), var(--panel));
+      border: 2px solid var(--border);
+    }
+    .section-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-strong);
+    }
+    .section-count {
+      margin-left: auto;
+      padding: 6px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--accent), transparent);
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      border-color: var(--accent);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card-number {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: white;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .card-title {
+      flex: 1;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-strong);
+      line-height: 1.4;
+    }
+
+    .card-content {
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .sub-items {
+      margin-top: 16px;
+      padding-left: 20px;
+      border-left: 2px solid var(--border);
+    }
+    .sub-item {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    .sub-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .sub-number {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.85rem;
+      min-width: 32px;
+    }
+    .sub-text {
+      color: var(--text-main);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Tags */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .tag {
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tag-priority { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+    .tag-security { background: rgba(168, 85, 247, 0.2); color: var(--accent-2); border: 1px solid var(--accent-2); }
+    .tag-testing { background: rgba(34, 197, 94, 0.2); color: var(--accent-3); border: 1px solid var(--accent-3); }
+    .tag-devex { background: rgba(56, 189, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); }
+    .tag-future { background: rgba(245, 158, 11, 0.2); color: var(--accent-4); border: 1px solid var(--accent-4); }
+
+    /* Immediate Section Special Styling */
+    .immediate-section .card::before {
+      background: linear-gradient(180deg, var(--accent-red), var(--accent-4));
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 60px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+      .header-title { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <header class="header">
+      <div class="header-badge">📋 Project Roadmap</div>
+      <h1 class="header-title">TurboVets Development Plan</h1>
+      <p class="header-subtitle">
+        Strategic roadmap for infrastructure enhancements, security improvements, and feature development
+      </p>
+    </header>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-number">2</div>
+        <div class="stat-label">Immediate Tasks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">4</div>
+        <div class="stat-label">Major Categories</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">15+</div>
+        <div class="stat-label">Total Items</div>
+      </div>
+    </div>
+
+    <!-- IMMEDIATE SECTION -->
+    <section class="immediate-section">
+      <div class="section-header">
+        <div class="section-icon" style="border-color: var(--accent-red);">⏱️</div>
+        <h2 class="section-title">Immediate Priorities</h2>
+        <span class="section-count">2 Tasks</span>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-number" style="background: linear-gradient(135deg, var(--accent-red), var(--accent-4));">0</div>
+            <div class="card-title">Share AWS Group Policies & Environment Files</div>
+          </div>
+          <div class="card-content">
+            Share gist files containing AWS group policies and <code>.env</code> configuration files for complete documentation.
+          </div>
+          <div class="tags">
+            <span class="tag tag-priority">Critical</span>
+            <span class="tag tag-security">Documentation</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-number" style="background: linear-gradient(135deg, var(--accent-red), var(--accent-4));">1</div>
+            <div class="card-title">Documentation & Deployment Validation</div>
+          </div>
+          <div class="card-content">
+            Ensure all documentation (README, workflows) aligns 100% with deployed architecture. Run full "from scratch" deployment in clean AWS profile to validate reproducibility.
+          </div>
+          <div class="tags">
+            <span class="tag tag-priority">Critical</span>
+            <span class="tag tag-testing">Testing</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FUTURE ENHANCEMENTS -->
+    <div class="section-header">
+      <div class="section-icon" style="border-color: var(--accent-3);">🌱</div>
+      <h2 class="section-title">Future Enhancements</h2>
+      <span class="section-count">4 Categories</span>
+    </div>
+
+    <!-- Category 1: Infrastructure & Security -->
+    <h3 style="color: var(--accent-2); font-size: 1.3rem; margin: 40px 0 20px; padding-left: 12px; border-left: 4px solid var(--accent-2);">
+      1️⃣ Infrastructure & Security Enhancements
+    </h3>
+    <div class="grid">
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.1</div>
+          <div class="card-title">LocalStack Integration</div>
+        </div>
+        <div class="card-content">
+          Integrate LocalStack for local AWS infrastructure testing to reduce costs, improve security, and increase development speed. Add Terraform tests for stable deployment environment.
+        </div>
+        <div class="tags">
+          <span class="tag tag-future">Cost Optimization</span>
+          <span class="tag tag-testing">Testing</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.2</div>
+          <div class="card-title">Pull Request Enforcement & Pipeline Checks</div>
+        </div>
+        <div class="card-content">
+          Enforce PR workflow on master with comprehensive checks: code coverage, pair review requirements, vulnerability scanning (Snyk, SonarQube), single commit policy, and branch naming conventions (feature|devops|fix).
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">Security</span>
+          <span class="tag tag-devex">DevEx</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.3</div>
+          <div class="card-title">Multi-Environment Testing</div>
+        </div>
+        <div class="card-content">
+          Test Staging and Prod environments with properly configured IAM users following least privilege principles.
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">IAM</span>
+          <span class="tag tag-testing">Environments</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.4</div>
+          <div class="card-title">Production CI Separation</div>
+        </div>
+        <div class="card-content">
+          Move Production CI to dedicated GitHub repository, completely separated from Dev and Staging environments for enhanced security and isolation.
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">Isolation</span>
+          <span class="tag tag-devex">Best Practice</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.5</div>
+          <div class="card-title">ECS Fargate Autoscaling</div>
+        </div>
+        <div class="card-content">
+          Implement autoscaling policies based on CPU and memory metrics for optimal resource utilization.
+        </div>
+        <div class="tags">
+          <span class="tag tag-future">Performance</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.6</div>
+          <div class="card-title">GitHub OIDC Integration</div>
+        </div>
+        <div class="card-content">
+          Replace long-lived AWS keys with GitHub OIDC for improved security. Requires AWS Organization setup.
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">Authentication</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.7</div>
+          <div class="card-title">Advanced Protection Layer</div>
+        </div>
+        <div class="card-content">
+          Implement rate limiting, AWS WAF, and AWS Shield for comprehensive protection against attacks and abuse.
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">WAF</span>
+          <span class="tag tag-security">DDoS</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.8</div>
+          <div class="card-title">Automated Vulnerability Scanning</div>
+        </div>
+        <div class="card-content">
+          Deploy dependency bot, GitHub Actions, or AWS GuardDuty for continuous vulnerability monitoring of packages and dependencies.
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">Scanning</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">1.9</div>
+          <div class="card-title">IAM Policy Review</div>
+        </div>
+        <div class="card-content">
+          Comprehensive review of all IAM policies to ensure strict least privilege access across all services and resources.
+        </div>
+        <div class="tags">
+          <span class="tag tag-security">IAM</span>
+          <span class="tag tag-priority">Review</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Category 2: Observability & Testing -->
+    <h3 style="color: var(--accent-3); font-size: 1.3rem; margin: 40px 0 20px; padding-left: 12px; border-left: 4px solid var(--accent-3);">
+      2️⃣ Observability & Testing
+    </h3>
+    <div class="grid">
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">2.1</div>
+          <div class="card-title">Health Monitoring & Alerting</div>
+        </div>
+        <div class="card-content">
+          Add synthetic health checks and CloudWatch alarms for ALB 5xx errors and target health. Integrate with SNS for real-time notifications.
+        </div>
+        <div class="tags">
+          <span class="tag tag-testing">Monitoring</span>
+          <span class="tag tag-future">Alerting</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">2.2</div>
+          <div class="card-title">Integration Testing Suite</div>
+        </div>
+        <div class="card-content">
+          Implement integration tests that verify ALB <code>/health</code> endpoint and root endpoint functionality post-deployment.
+        </div>
+        <div class="tags">
+          <span class="tag tag-testing">Integration</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">2.3</div>
+          <div class="card-title">CI Pipeline Testing Gates</div>
+        </div>
+        <div class="card-content">
+          Integrate tests into CI pipeline with deployment gates that prevent promotion unless all tests pass successfully.
+        </div>
+        <div class="tags">
+          <span class="tag tag-testing">CI/CD</span>
+          <span class="tag tag-devex">Quality Gates</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Category 3: Developer Experience -->
+    <h3 style="color: var(--accent); font-size: 1.3rem; margin: 40px 0 20px; padding-left: 12px; border-left: 4px solid var(--accent);">
+      3️⃣ Developer Experience & Multi-Environment
+    </h3>
+    <div class="grid">
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">3.1</div>
+          <div class="card-title">Environment-Specific Workflows</div>
+        </div>
+        <div class="card-content">
+          Create dedicated GitHub workflows or matrix builds for each environment (Dev, Staging, Production) with appropriate configurations.
+        </div>
+        <div class="tags">
+          <span class="tag tag-devex">Multi-Env</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">3.2</div>
+          <div class="card-title">Dashboard Integration</div>
+        </div>
+        <div class="card-content">
+          Integrate previous TurboVets SWE assessment dashboard (<code>turbovets-dashboard</code>) into the Docker container of this project.
+        </div>
+        <div class="tags">
+          <span class="tag tag-devex">Feature</span>
+          <span class="tag tag-future">Integration</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Category 4: Future Features -->
+    <h3 style="color: var(--accent-4); font-size: 1.3rem; margin: 40px 0 20px; padding-left: 12px; border-left: 4px solid var(--accent-4);">
+      4️⃣ Feature Roadmap (Post-Assessment)
+    </h3>
+    <div class="grid">
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">4.1</div>
+          <div class="card-title">Architecture Diagram Maintenance</div>
+        </div>
+        <div class="card-content">
+          Enhance AWS architecture diagrams with automated updates to keep them synchronized with infrastructure code changes.
+        </div>
+        <div class="tags">
+          <span class="tag tag-devex">Documentation</span>
+          <span class="tag tag-future">Automation</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-number">4.2</div>
+          <div class="card-title">Advanced Cost Optimization</div>
+        </div>
+        <div class="card-content">
+          Implement advanced cost-optimization strategies including reserved capacity, instance right-sizing, and resource scheduling.
+        </div>
+        <div class="tags">
+          <span class="tag tag-future">FinOps</span>
+          <span class="tag tag-future">Cost</span>
+        </div>
+      </div>
+
+    </div>
+
+    <footer style="margin-top: 80px; padding: 40px 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted);">
+      <p style="margin-bottom: 8px;">🚀 TurboVets Project Roadmap</p>
+      <p style="font-size: 0.85rem;">Continuously evolving towards production excellence</p>
+    </footer>
+
+  </div>
+</body>
+</html>
