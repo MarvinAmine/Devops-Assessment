@@ -256,6 +256,30 @@
       letter-spacing: 1px;
     }
 
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      margin-bottom: 24px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .back-button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
+    }
+
+
     @media (max-width: 768px) {
       .grid { grid-template-columns: 1fr; }
       .header-title { font-size: 2rem; }
@@ -264,6 +288,8 @@
 </head>
 <body>
   <div class="container">
+
+    <a href="index.html" class="back-button">← Back to Documentation Hub</a>
     
     <header class="header">
       <div class="header-badge">📋 Project Roadmap</div>

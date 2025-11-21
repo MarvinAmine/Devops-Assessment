@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurboVets – Documentation Hub</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg: #0a0e1a;
+      --panel: #0f1419;
+      --card: #151b26;
+      --border: #1f2937;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --accent-2: #a855f7;
+      --accent-3: #22c55e;
+      --accent-4: #f59e0b;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-strong: #f9fafb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 60px 0 80px;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.3; }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 50px;
+      padding: 12px 28px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 32px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-title {
+      font-size: 4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--text-strong) 0%, var(--accent) 50%, var(--accent-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 24px;
+      line-height: 1.1;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-subtitle {
+      font-size: 1.3rem;
+      color: var(--text-muted);
+      max-width: 800px;
+      margin: 0 auto 48px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Navigation Cards Grid */
+    .nav-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 32px;
+      margin-bottom: 60px;
+    }
+
+    .nav-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .nav-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+
+    .nav-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .nav-card::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      transition: width 0.6s ease, height 0.6s ease;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .nav-card:hover::after {
+      width: 600px;
+      height: 600px;
+    }
+
+    .nav-card:hover {
+      transform: translateY(-8px);
+      border-color: var(--accent);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px var(--accent-glow);
+    }
+
+    .nav-card-icon {
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      font-size: 2.5rem;
+      position: relative;
+      z-index: 1;
+      transition: transform 0.4s ease;
+    }
+
+    .nav-card:hover .nav-card-icon {
+      transform: scale(1.1) rotate(5deg);
+    }
+
+    .nav-card-content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .nav-card-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-strong);
+      margin-bottom: 8px;
+      transition: color 0.3s ease;
+    }
+
+    .nav-card:hover .nav-card-title {
+      color: var(--accent);
+    }
+
+    .nav-card-description {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .nav-card-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .feature-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+    }
+
+    .nav-card:hover .feature-tag {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .nav-card-arrow {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      font-size: 1.5rem;
+      color: var(--accent);
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.4s ease;
+      z-index: 1;
+    }
+
+    .nav-card:hover .nav-card-arrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Color variants */
+    .nav-card--architecture {
+      --card-accent: var(--accent);
+    }
+
+    .nav-card--implementation {
+      --card-accent: var(--accent-3);
+    }
+
+    .nav-card--roadmap {
+      --card-accent: var(--accent-4);
+    }
+
+    .nav-card--architecture .nav-card-icon {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .nav-card--implementation .nav-card-icon {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.05));
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .nav-card--roadmap .nav-card-icon {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+    }
+
+    .footer-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    .footer-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: color 0.3s ease;
+    }
+
+    .footer-link:hover {
+      color: var(--text-strong);
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-bottom: 80px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 2.5rem;
+      }
+
+      .hero-subtitle {
+        font-size: 1.1rem;
+      }
+
+      .nav-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-bar {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Smooth animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .nav-card {
+      animation: fadeInUp 0.6s ease-out backwards;
+    }
+
+    .nav-card:nth-child(1) { animation-delay: 0.1s; }
+    .nav-card:nth-child(2) { animation-delay: 0.2s; }
+    .nav-card:nth-child(3) { animation-delay: 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-badge">
+        <span>🚀</span>
+        <span>DevOps Assessment Documentation</span>
+      </div>
+      
+      <h1 class="hero-title">TurboVets</h1>
+      
+      <p class="hero-subtitle">
+        Comprehensive documentation for the production-grade AWS infrastructure deployment
+        with automated CI/CD, containerization, and infrastructure as code.
+      </p>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-number">3</div>
+        <div class="stat-label">Documentation Sections</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">AWS</div>
+        <div class="stat-label">Cloud Platform</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">100%</div>
+        <div class="stat-label">Automated Deployment</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">IaC</div>
+        <div class="stat-label">Infrastructure as Code</div>
+      </div>
+    </div>
+
+    <!-- Navigation Cards -->
+    <div class="nav-grid">
+      <!-- Architecture Card -->
+      <a href="turbovets-architecture.html" class="nav-card nav-card--architecture">
+        <div class="nav-card-icon">🏗️</div>
+        <div class="nav-card-content">
+          <h2 class="nav-card-title">Architecture Topology</h2>
+          <p class="nav-card-description">
+            Detailed topological view of the VPC, subnets, and containerized resources.
+            Explore the complete AWS infrastructure layout with ECS Fargate, ALB, and multi-AZ configuration.
+          </p>
+          <div class="nav-card-features">
+            <span class="feature-tag">VPC Design</span>
+            <span class="feature-tag">Multi-AZ</span>
+            <span class="feature-tag">Load Balancing</span>
+            <span class="feature-tag">Security Groups</span>
+          </div>
+        </div>
+        <span class="nav-card-arrow">→</span>
+      </a>
+
+      <!-- Implementation Card -->
+      <a href="implementation_walkthrough.html" class="nav-card nav-card--implementation">
+        <div class="nav-card-icon">⚙️</div>
+        <div class="nav-card-content">
+          <h2 class="nav-card-title">Implementation Walkthrough</h2>
+          <p class="nav-card-description">
+            Step-by-step implementation guide covering CI/CD pipeline, IAM configuration, and infrastructure deployment.
+            Real-world screenshots and detailed explanations of each component.
+          </p>
+          <div class="nav-card-features">
+            <span class="feature-tag">CI/CD Pipeline</span>
+            <span class="feature-tag">IAM Setup</span>
+            <span class="feature-tag">CDKTF Deployment</span>
+            <span class="feature-tag">Screenshots</span>
+          </div>
+        </div>
+        <span class="nav-card-arrow">→</span>
+      </a>
+
+      <!-- Roadmap Card -->
+      <a href="roadmap.html" class="nav-card nav-card--roadmap">
+        <div class="nav-card-icon">📋</div>
+        <div class="nav-card-content">
+          <h2 class="nav-card-title">Project Roadmap</h2>
+          <p class="nav-card-description">
+            Strategic roadmap for infrastructure enhancements, security improvements, and feature development.
+            Immediate priorities and future enhancements across 4 major categories.
+          </p>
+          <div class="nav-card-features">
+            <span class="feature-tag">Future Features</span>
+            <span class="feature-tag">Security</span>
+            <span class="feature-tag">Testing</span>
+            <span class="feature-tag">DevEx</span>
+          </div>
+        </div>
+        <span class="nav-card-arrow">→</span>
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p class="footer-text">🚀 TurboVets DevOps Assessment</p>
+      <p class="footer-text" style="font-size: 0.85rem; opacity: 0.7;">
+        Production-grade AWS infrastructure with automated deployment
+      </p>
+      <div class="footer-links">
+        <a href="turbovets-architecture.html" class="footer-link">Architecture</a>
+        <a href="implementation_walkthrough.html" class="footer-link">Implementation</a>
+        <a href="roadmap.html" class="footer-link">Roadmap</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
