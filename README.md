@@ -9,7 +9,7 @@
 
 # iac – AWS Infrastructure with CDK for Terraform (TypeScript)
 
-Te folder `/iac contains the AWS infrastructure for the TurboVets DevOps assessment, implemented using **CDK for Terraform (CDKTF)** in **TypeScript**.
+Te folder `/iac` contains the AWS infrastructure for the TurboVets DevOps assessment, implemented using **CDK for Terraform (CDKTF)** in **TypeScript**.
 
 The goal is to deploy the Dockerized Express + TypeScript application behind a public load balancer on **ECS Fargate**, within an isolated **multi-AZ VPC**, using infrastructure that is:
 
